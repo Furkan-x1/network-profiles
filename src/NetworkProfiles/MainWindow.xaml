@@ -129,7 +129,7 @@
                     BorderBrush="{StaticResource BorderBrush}">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Adapter" Binding="{Binding Name}" Width="2*"/>
-              <DataGridTextColumn Header="Tür" Binding="{Binding Type}" Width="*"/>
+              <DataGridTextColumn Header="Type" Binding="{Binding Type}" Width="*"/>
               <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="*"/>
               <DataGridTextColumn Header="IPv4" Binding="{Binding IPv4}" Width="2*"/>
               <DataGridTextColumn Header="Gateway" Binding="{Binding Gateway}" Width="2*"/>
