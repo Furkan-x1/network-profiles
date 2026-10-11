@@ -160,7 +160,7 @@ public partial class MainWindow : Window
         {
             _adapters = _discovery.GetAdapters().ToList();
             AdaptersGrid.ItemsSource = _adapters;
-            StatusText.Text = $"{_adapters.Count} adaptör bulundu. IPv4 adresi bulunan adaptörler üstte listelenir.";
+            StatusText.Text = $"{_adapters.Count} adapters found.";
         }
         catch (Exception ex) { StatusText.Text = $"Could not read adapter information: {ex.Message}"; }
     }
