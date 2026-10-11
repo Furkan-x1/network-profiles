@@ -85,7 +85,7 @@ public sealed class ProfileStore
         var profiles = JsonSerializer.Deserialize<List<NetworkProfile>>(json, JsonOptions)
             ?? throw new InvalidDataException("The profile file is empty or contains invalid JSON.");
         if (profiles.Count > MaxProfiles)
-            throw new InvalidDataException($"En fazla {MaxProfiles} profil içe aktarılabilir.");
+            throw new InvalidDataException($"A maximum of {MaxProfiles} profiles can be imported.");
         return profiles;
     }
 
@@ -102,7 +102,7 @@ public sealed class ProfileStore
 
             var errors = ProfileValidationService.Validate(profile);
             if (errors.Count > 0)
-                throw new InvalidDataException($"'{profile.Name}' profili geçersiz: {string.Join(" ", errors)}");
+                throw new InvalidDataException($"Profile '{profile.Name}' is invalid: {string.Join(" ", errors)}");
 
             if (!Guid.TryParseExact(profile.Id, "N", out _) || !ids.Add(profile.Id))
                 throw new InvalidDataException("Profile IDs must be valid and unique.");
