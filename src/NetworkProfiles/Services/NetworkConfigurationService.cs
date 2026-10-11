@@ -66,9 +66,9 @@ public sealed class NetworkConfigurationService
             var actual = ReadSnapshot(profile.AdapterId);
             stage = "uygulama sonucunu doğrulama";
             if (!Matches(profile, actual))
-                throw new InvalidOperationException("Windows tarafından okunan ayarlar profille eşleşmiyor.");
+                throw new InvalidOperationException("The settings read back from Windows do not match the profile.");
 
-            return new(true, "Profil başarıyla uygulandı ve Windows ayarları doğrulandı.");
+            return new(true, "Profile applied successfully and Windows settings were verified.");
         }
         catch (Exception ex)
         {
@@ -79,14 +79,14 @@ public sealed class NetworkConfigurationService
                 {
                     stage = "hata sonrası önceki ayarları geri yükleme";
                     Restore(snapshot);
-                    return new(false, $"Profil uygulanamadı. Önceki ayarlar bellekten geri yüklendi. Hata aşaması: {detail}");
+                    return new(false, $"Profile could not be applied. Previous settings were restored from memory. Failure stage: {detail}");
                 }
                 catch (Exception rollbackEx)
                 {
-                    return new(false, $"KRİTİK: Profil uygulanamadı ve otomatik geri yükleme de başarısız oldu. Hata: {detail}. Geri yükleme hatası: {rollbackEx.GetType().Name}: {rollbackEx.Message}");
+                    return new(false, $"CRITICAL: Profile application and automatic rollback both failed. Error: {detail}. Rollback error: {rollbackEx.GetType().Name}: {rollbackEx.Message}");
                 }
             }
-            return new(false, $"Ağ ayarları değiştirilmedi. Hata aşaması: {detail}");
+            return new(false, $"Network settings were not changed. Failure stage: {detail}");
         }
     }
 
@@ -95,21 +95,21 @@ public sealed class NetworkConfigurationService
         using var adapter = FindAdapter(snapshot.AdapterId);
         if (snapshot.DhcpEnabled)
         {
-            CheckResult(Invoke(adapter, "EnableDHCP"), "DHCP etkinleştirilemedi");
-            CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", new object?[] { null }), "DNS otomatiğe alınamadı");
+            CheckResult(Invoke(adapter, "EnableDHCP"), "Could not enable DHCP");
+            CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", new object?[] { null }), "Could not set DNS to automatic");
             return;
         }
 
         if (snapshot.IpAddresses.Length == 0 || snapshot.Subnets.Length == 0)
             throw new InvalidOperationException("Yedekte statik IPv4 adresi bulunamadığından geri yükleme yapılamıyor.");
 
-        CheckResult(Invoke(adapter, "EnableStatic", new object[] { snapshot.IpAddresses, snapshot.Subnets }), "Önceki statik IPv4 ayarları geri yüklenemedi");
+        CheckResult(Invoke(adapter, "EnableStatic", new object[] { snapshot.IpAddresses, snapshot.Subnets }), "Could not restore previous static IPv4 settings");
         CheckResult(Invoke(adapter, "SetGateways", snapshot.Gateways.Length == 0
             ? new object?[] { Array.Empty<string>(), Array.Empty<ushort>() }
-            : new object?[] { snapshot.Gateways, Enumerable.Repeat((ushort)1, snapshot.Gateways.Length).ToArray() }), "Önceki ağ geçidi geri yüklenemedi");
+            : new object?[] { snapshot.Gateways, Enumerable.Repeat((ushort)1, snapshot.Gateways.Length).ToArray() }), "Could not restore the previous gateway");
         CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", snapshot.DnsServers.Length == 0
             ? new object?[] { null }
-            : new object?[] { snapshot.DnsServers }), "Önceki DNS ayarları geri yüklenemedi");
+            : new object?[] { snapshot.DnsServers }), "Could not restore previous DNS settings");
     }
 
     private static bool Matches(NetworkProfile profile, AdapterSnapshot snapshot)
@@ -134,8 +134,8 @@ public sealed class NetworkConfigurationService
         using var adapter = FindAdapter(profile.AdapterId);
         if (profile.UseDhcp)
         {
-            CheckResult(Invoke(adapter, "EnableDHCP"), "DHCP etkinleştirilemedi");
-            CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", new object?[] { null }), "DNS otomatiğe alınamadı");
+            CheckResult(Invoke(adapter, "EnableDHCP"), "Could not enable DHCP");
+            CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", new object?[] { null }), "Could not set DNS to automatic");
             return;
         }
 
@@ -144,26 +144,26 @@ public sealed class NetworkConfigurationService
         {
             new[] { profile.IPv4Address! },
             new[] { mask }
-        }), "Statik IPv4 ayarlanamadı");
+        }), "Could not set static IPv4");
 
         if (string.IsNullOrWhiteSpace(profile.Gateway))
-            CheckResult(Invoke(adapter, "SetGateways", new object?[] { Array.Empty<string>(), Array.Empty<ushort>() }), "Ağ geçidi temizlenemedi");
+            CheckResult(Invoke(adapter, "SetGateways", new object?[] { Array.Empty<string>(), Array.Empty<ushort>() }), "Could not clear the gateway");
         else
             CheckResult(Invoke(adapter, "SetGateways", new object?[]
             {
                 new[] { profile.Gateway },
                 new ushort[] { 1 }
-            }), "Ağ geçidi ayarlanamadı");
+            }), "Could not set the gateway");
 
         CheckResult(Invoke(adapter, "SetDNSServerSearchOrder",
             profile.DnsServers.Count == 0 ? new object?[] { null } : new object?[] { profile.DnsServers.ToArray() }),
-            "DNS sunucuları ayarlanamadı");
+            "Could not set DNS servers");
     }
 
     private static ManagementObject FindAdapter(string adapterId)
     {
         if (!Guid.TryParse(adapterId.Trim('{', '}'), out var guid))
-            throw new InvalidDataException("Adaptör kimliği geçersiz.");
+            throw new InvalidDataException("Invalid adapter ID.");
 
         var wanted = guid.ToString("D");
         // NetworkInterface.Id is not guaranteed to equal the configuration's
@@ -239,7 +239,7 @@ public sealed class NetworkConfigurationService
 
         throw new InvalidOperationException(
             $"Adaptörün Windows ağ yapılandırması bulunamadı (NetworkInterface.Id={wanted}). " +
-            "Windows WMI'da bu kimlikle eşleşen adaptör veya IPv4 yapılandırması bulunamadı.");
+            "No matching adapter or IPv4 configuration was found in Windows WMI.");
     }
 
     private static object? Invoke(ManagementObject adapter, string method, object?[]? args = null)
@@ -271,7 +271,7 @@ public sealed class NetworkConfigurationService
     {
         var code = value is null ? 0 : Convert.ToUInt32(value);
         if (code != 0)
-            throw new InvalidOperationException($"{message}. Windows yönetim sağlayıcısı kodu: {code}.");
+            throw new InvalidOperationException($"{message}. Windows management provider code: {code}.");
     }
 
     private static bool GetBool(ManagementObject adapter, string property) =>
