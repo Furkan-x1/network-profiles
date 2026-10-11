@@ -1,53 +1,44 @@
 # Network Profiles
 
-Windows WPF utility for managing independent IPv4 profiles on Wi-Fi and Ethernet, designed for PLC commissioning and quick return to DHCP.
+Windows WPF utility for independent IPv4 profiles on Wi-Fi and Ethernet, designed for PLC commissioning.
 
-## Current status
+## Features
 
-The app currently:
-- Lists network adapters and their IPv4 addresses/gateways; operationally connected adapters appear first.
-- Creates, edits, and deletes adapter-specific profile definitions.
-- Validates IPv4 address, prefix length, gateway, and DNS input.
-- Stores profiles in `%LocalAppData%\NetworkProfiles\profiles.json`.
-- Imports and exports JSON profiles. Import validates data and **never applies network settings**.
-- Runs automated Windows build and test checks through GitHub Actions.
+- Network adapter list with connected adapters first.
+- Adapter-specific profiles: DHCP or static IPv4, prefix, gateway, DNS and notes.
+- Input validation and JSON import/export with data validation.
+- Profile apply action with preview/confirmation and UAC elevation only for the network-changing helper.
+- Before applying, a per-adapter configuration snapshot is written to `%LocalAppData%\\NetworkProfiles\\backups`.
+- After applying, settings are read back to verify them. On failure, the app attempts to restore the snapshot and reports the backup path.
+- System-tray icon. Closing the main window hides it instead of exiting.
+- Tray right-click menu provides quick profile selection and apply, plus open, refresh and exit.
+- Optional Windows startup; when enabled, the app starts minimized to the tray.
+- Opt-in ping scanner for private IPv4 CIDR ranges, limited to at most 1022 host addresses, cancellable and exportable as CSV.
+- Profiles and backups stay on the local computer; there is no telemetry.
 
-**Important:** Applying profiles to Windows, UAC elevation, configuration snapshots, verification/rollback, scanner, tray integration, startup, and portable publishing are not implemented yet. Saved profiles do not change the active network configuration.
+## Important limitations
 
-## Security design
+- Network changes require Windows management APIs/WMI support and UAC approval. If apply/verification fails, automatic rollback is attempted but cannot be guaranteed if Windows or the adapter becomes unavailable. Keep the backup path and ensure local access to the PC when changing the active adapter.
+- The scanner reports hosts that answer ICMP ping; devices with ping disabled may be omitted, and a response does not identify a host as a PLC.
+- The scanner is limited to private IPv4 ranges and `/22` or smaller networks.
+- Profile application is for IPv4; IPv6, VLAN, proxy, VPN and remote-device management are out of scope.
 
-- Prefer Windows/.NET networking APIs.
-- If needed, invoke `%SystemRoot%\System32\netsh.exe` by full path with `UseShellExecute=false` and separate argument values. Never build shell commands from profile input.
-- Validate IPv4 address, prefix, gateway and DNS before requesting elevation.
-- Keep UI unelevated; request UAC only for the narrow network-changing operation.
-- Snapshot before mutation; re-read and verify after mutation; attempt restoration if verification fails.
-- Treat adapter identifiers and imported JSON as untrusted.
-- Scanning will be opt-in; no telemetry or network-detail uploads.
+## Build, test and publish
 
-## Build and test
-
-Requires Windows and the .NET 10 SDK with WPF support.
-
-```powershell
-dotnet build .\src\NetworkProfiles\NetworkProfiles.csproj -c Release
-dotnet test .\tests\NetworkProfiles.Tests\NetworkProfiles.Tests.csproj -c Release
-```
-
-Self-contained single-file publish, after the remaining features are implemented and tested:
+Requires Windows and the .NET 10 SDK.
 
 ```powershell
-dotnet publish .\src\NetworkProfiles\NetworkProfiles.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet build .\\src\\NetworkProfiles\\NetworkProfiles.csproj -c Release
+dotnet test .\\tests\\NetworkProfiles.Tests\\NetworkProfiles.Tests.csproj -c Release
+dotnet publish .\\src\\NetworkProfiles\\NetworkProfiles.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\\artifacts\\publish
 ```
 
-## Roadmap
+GitHub Actions runs the Windows build/tests and publishes a portable single-file `win-x64` artifact. See [Actions](https://github.com/Furkan-x1/network-profiles/actions).
 
-1. Adapter discovery, status, and connected-first sorting.
-2. Profile CRUD, validation, JSON storage and import/export.
-3. Safe apply flow: preview, backup, narrow UAC elevation, verify and rollback.
-4. Return-to-DHCP action and per-adapter independent configuration.
-5. Transaction history and connectivity checks.
-6. Opt-in subnet scanner with cancellation and bounded range.
-7. System-tray popup and optional startup.
-8. Automated tests, recovery testing, and portable single-file release.
+## Security behavior
 
-The application must not change network settings until the safe apply/rollback milestone is implemented and tested.
+- UI runs unelevated; only the dedicated profile-apply process requests UAC.
+- Adapter IDs are checked as GUIDs before querying Windows network configuration.
+- Network configuration calls use Windows management APIs, not shell command concatenation.
+- Imported profile JSON is data only and is never executed or applied automatically.
+- Scanner is opt-in, bounded, and restricted to private IPv4 CIDRs.
