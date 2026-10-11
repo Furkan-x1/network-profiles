@@ -162,14 +162,9 @@ public sealed class NetworkConfigurationService
 
         var wanted = guid.ToString("D");
         using var searcher = new ManagementObjectSearcher(
-            "SELECT SettingID, DHCPEnabled, IPAddress, IPSubnet, DefaultIPGateway, DNSServerSearchOrder FROM Win32_NetworkAdapterConfiguration WHERE IPEnabled = TRUE");
+            $"SELECT SettingID, DHCPEnabled, IPAddress, IPSubnet, DefaultIPGateway, DNSServerSearchOrder FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{{{wanted}}}'");
         foreach (ManagementObject item in searcher.Get())
-        {
-            var settingId = Convert.ToString(item["SettingID"]);
-            if (Guid.TryParse(settingId, out var found) && found.ToString("D").Equals(wanted, StringComparison.OrdinalIgnoreCase))
-                return item;
-            item.Dispose();
-        }
+            return item;
         throw new InvalidOperationException("Bu adaptör etkin IPv4 yapılandırmasına sahip değil veya Windows tarafından bulunamadı.");
     }
 
