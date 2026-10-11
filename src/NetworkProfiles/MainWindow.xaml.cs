@@ -20,6 +20,7 @@ public partial class MainWindow : Window
 {
     private readonly AdapterDiscoveryService _discovery = new();
     private readonly ProfileStore _store = new();
+    private readonly StartupService _startup = new();
     private readonly NotifyIcon _trayIcon;
     private List<AdapterStatus> _adapters = [];
     private List<NetworkProfile> _profiles = [];
@@ -46,6 +47,8 @@ public partial class MainWindow : Window
         RefreshAdapters();
         RefreshProfiles();
         RebuildTrayMenu();
+        try { StartupCheckBox.IsChecked = _startup.IsEnabled(); }
+        catch (Exception ex) { StatusText.Text = $"Başlangıç ayarı okunamadı: {ex.Message}"; }
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e)
@@ -53,6 +56,29 @@ public partial class MainWindow : Window
         RefreshAdapters();
         RefreshProfiles();
         RebuildTrayMenu();
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (Environment.GetCommandLineArgs().Contains("--minimized", StringComparer.OrdinalIgnoreCase))
+            Hide();
+    }
+
+    private void Startup_Changed(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            _startup.SetEnabled(StartupCheckBox.IsChecked == true);
+            StatusText.Text = StartupCheckBox.IsChecked == true
+                ? "Windows başlangıcı etkin; uygulama sistem tepsisine küçültülerek açılacak."
+                : "Windows başlangıcı devre dışı bırakıldı.";
+        }
+        catch (Exception ex)
+        {
+            StartupCheckBox.IsChecked = false;
+            StatusText.Text = $"Başlangıç ayarı değiştirilemedi: {ex.Message}";
+            MessageBox.Show(this, StatusText.Text, "Başlangıç ayarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void OpenScanner_Click(object sender, RoutedEventArgs e)
