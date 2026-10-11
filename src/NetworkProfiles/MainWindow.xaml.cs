@@ -247,7 +247,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Tercih kaydedilemedi: {ex.Message}", "Ayar kaydedilemedi",
+            MessageBox.Show(this, $"Could not save preference: {ex.Message}", "Could not save setting",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -302,7 +302,7 @@ public partial class MainWindow : Window
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (MessageBox.Show(this, $"'{row.Name}'? Do you want to delete this profile?", "Delete profile",
+        if (MessageBox.Show(this, $"Do you want to delete profile '{row.Name}'?", "Delete profile",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
         _profiles.RemoveAll(p => p.Id == row.Profile.Id);
@@ -324,8 +324,8 @@ public partial class MainWindow : Window
     {
         var adapterName = _adapters.FirstOrDefault(a => a.Id == profile.AdapterId)?.Name ?? profile.AdapterId;
         var configuration = profile.UseDhcp
-            ? "IPv4 ve DNS otomatik (DHCP)"
-            : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nAğ geçidi: {profile.Gateway ?? "none"}\nDNS: {(profile.DnsServers.Count == 0 ? "automatic" : string.Join(", ", profile.DnsServers))}";
+            ? "IPv4 and DNS automatic (DHCP)"
+            : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nGateway: {profile.Gateway ?? "none"}\nDNS: {(profile.DnsServers.Count == 0 ? "automatic" : string.Join(", ", profile.DnsServers))}";
 
         if (SkipApplyConfirmationCheckBox.IsChecked != true &&
             MessageBox.Show(this,
@@ -440,7 +440,7 @@ public partial class MainWindow : Window
                 var adapterName = _adapters.FirstOrDefault(a => a.Id == profile.AdapterId)?.Name ?? "Adapter not found";
                 var item = new ToolStripMenuItem($"{profile.Name}  —  {adapterName}");
                 item.ToolTipText = profile.UseDhcp
-                    ? "DHCP / otomatik IP ve DNS"
+                    ? "DHCP / automatic IP and DNS"
                     : $"{profile.IPv4Address}/{profile.PrefixLength}";
                 item.Click += async (_, _) => await ApplyProfileAsync(profile);
                 profilesMenu.DropDownItems.Add(item);
