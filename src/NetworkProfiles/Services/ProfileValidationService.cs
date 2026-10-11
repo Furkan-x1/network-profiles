@@ -13,38 +13,38 @@ public static class ProfileValidationService
         var errors = new List<string>();
 
         if (string.IsNullOrWhiteSpace(profile.Name))
-            errors.Add("Profil adı boş olamaz.");
+            errors.Add("Profile name cannot be empty.");
         else if (profile.Name.Trim().Length > 80)
-            errors.Add("Profil adı en fazla 80 karakter olabilir.");
+            errors.Add("Profile name cannot exceed 80 characters.");
 
         if (string.IsNullOrWhiteSpace(profile.AdapterId))
-            errors.Add("Bir ağ adaptörü seçilmelidir.");
+            errors.Add("Select a network adapter.");
 
         if (!profile.UseDhcp)
         {
             if (!TryIPv4(profile.IPv4Address, out var address))
-                errors.Add("Statik IPv4 adresi geçerli bir IPv4 adresi olmalıdır.");
+                errors.Add("The static IPv4 address must be a valid IPv4 address.");
 
             if (profile.PrefixLength is null or < 1 or > 32)
-                errors.Add("Önek uzunluğu 1 ile 32 arasında olmalıdır.");
+                errors.Add("Prefix length must be between 1 and 32.");
 
             if (!string.IsNullOrWhiteSpace(profile.Gateway) && !TryIPv4(profile.Gateway, out _))
-                errors.Add("Ağ geçidi geçerli bir IPv4 adresi olmalıdır.");
+                errors.Add("Gateway must be a valid IPv4 address.");
 
             if (TryIPv4(profile.IPv4Address, out address) && address.Equals(IPAddress.Any))
-                errors.Add("0.0.0.0 bir cihaz IPv4 adresi olarak kullanılamaz.");
+                errors.Add("0.0.0.0 cannot be used as a device IPv4 address.");
         }
 
         if (profile.DnsServers is null)
-            errors.Add("DNS sunucuları listesi boş olmalıdır veya geçerli IPv4 adresleri içermelidir.");
+            errors.Add("The DNS server list must be empty or contain valid IPv4 addresses.");
         else
         {
             if (profile.DnsServers.Count > 4)
-                errors.Add("En fazla dört DNS sunucusu tanımlanabilir.");
+                errors.Add("You can specify up to four DNS servers.");
 
             foreach (var dns in profile.DnsServers)
                 if (!TryIPv4(dns, out _))
-                    errors.Add($"Geçersiz DNS IPv4 adresi: {dns}");
+                    errors.Add($"Invalid DNS IPv4 address: {dns}");
         }
 
         return errors;
