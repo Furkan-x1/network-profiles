@@ -4,7 +4,7 @@
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="Network Profiles" Height="660" Width="1120" MinHeight="520" MinWidth="820"
         WindowStyle="None" ResizeMode="CanResize"
-        WindowStartupLocation="CenterScreen" Closing="Window_Closing" Loaded="Window_Loaded">
+        WindowStartupLocation="CenterScreen" Closing="Window_Closing" Loaded="Window_Loaded" StateChanged="Window_StateChanged">
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="36" ResizeBorderThickness="6" GlassFrameThickness="0"
                         CornerRadius="0" UseAeroCaptionButtons="False"/>
@@ -57,7 +57,7 @@
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
           <Button Style="{StaticResource TitleBarButtonStyle}" Content="&#xE921;" ToolTip="Küçült" Click="MinimizeWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
-          <Button Style="{StaticResource TitleBarButtonStyle}" Content="&#xE922;" ToolTip="Büyüt / geri yükle" Click="MaximizeRestoreWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
+          <Button x:Name="MaximizeRestoreButton" Style="{StaticResource TitleBarButtonStyle}" Content="&#xE922;" ToolTip="Büyüt / geri yükle" Click="MaximizeRestoreWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
           <Button Style="{StaticResource CloseTitleBarButtonStyle}" Content="&#xE8BB;" ToolTip="Kapat" Click="CloseWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
         </StackPanel>
         <TextBlock Text="Network Profiles" Margin="14,0,0,0" VerticalAlignment="Center"
