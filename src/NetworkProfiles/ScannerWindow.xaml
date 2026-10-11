@@ -1,0 +1,29 @@
+<Window x:Class="NetworkProfiles.ScannerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="PLC / Ağ tarayıcı" Height="520" Width="720" MinHeight="420" MinWidth="600"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="16">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <TextBlock Text="Yerel ağ tarayıcı" FontSize="20" FontWeight="SemiBold"/>
+    <DockPanel Grid.Row="1" Margin="0,12,0,12">
+      <TextBlock Text="CIDR" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <TextBox x:Name="CidrBox" Width="180" Text="192.168.1.0/24" Padding="6" VerticalContentAlignment="Center"/>
+      <Button x:Name="StartButton" Content="Taramayı başlat" Margin="10,0,0,0" Padding="12,5" Click="Start_Click"/>
+      <Button x:Name="CancelButton" Content="İptal" Margin="6,0,0,0" Padding="12,5" IsEnabled="False" Click="Cancel_Click"/>
+    </DockPanel>
+    <DataGrid x:Name="ResultsGrid" Grid.Row="2" IsReadOnly="True" AutoGenerateColumns="False"
+              CanUserAddRows="False" HeadersVisibility="Column">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="IPv4 adresi" Binding="{Binding Address}" Width="2*"/>
+        <DataGridTextColumn Header="Yanıt (ms)" Binding="{Binding RoundtripTimeMs}" Width="*"/>
+        <DataGridTextColumn Header="Durum" Binding="{Binding Status}" Width="*"/>
+      </DataGrid.Columns>
+    </DataGrid>
+    <DockPanel Grid.Row="3" Margin="0,12,0,0">
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" TextWrapping="Wrap"
+                 Text="Tarama kullanıcı tarafından başlatılır. Yalnızca özel IPv4 ağları taranır; en fazla 1022 adres."/>
+      <Button Content="CSV dışa aktar" DockPanel.Dock="Right" Margin="10,0,0,0" Padding="10,5" Click="Export_Click"/>
+    </DockPanel>
+  </Grid>
+</Window>
