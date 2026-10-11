@@ -1,44 +1,85 @@
 # Network Profiles
 
-Windows WPF utility for independent IPv4 profiles on Wi-Fi and Ethernet, designed for PLC commissioning.
+[![Build and test](https://github.com/Furkan-x1/network-profiles/actions/workflows/build.yml/badge.svg)](https://github.com/Furkan-x1/network-profiles/actions)
+[![Platform](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?logo=windows)](https://www.microsoft.com/windows)
+[![Built with](https://img.shields.io/badge/built%20with-C%23%20%2F%20.NET%2010-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+
+**A lightweight Windows utility for managing adapter-specific IPv4 profiles, built for PLC commissioning and network troubleshooting.**
+
+Network Profiles lets you save reusable IPv4 configurations for individual Ethernet and Wi-Fi adapters, switch between DHCP and static settings, and inspect local network hosts without repeatedly entering network details by hand.
 
 ## Features
 
-- Network adapter list prioritizes adapters with assigned IPv4 addresses, then link state.
-- Adapter-specific profiles: DHCP or static IPv4, prefix, gateway, DNS and notes.
-- Input validation and JSON import/export with data validation.
-- The application requests administrator privileges at startup; applying profiles does not launch another process or trigger a separate UAC prompt.
-- Before applying, a per-adapter configuration snapshot is written to `%LocalAppData%\\NetworkProfiles\\backups`.
-- After applying, settings are read back to verify them. On failure, the app attempts to restore the snapshot and reports the backup path.
-- System-tray icon. Closing the main window hides it instead of exiting.
-- Tray right-click menu provides quick profile selection and apply, plus open, refresh and exit.
-- Optional Windows startup; when enabled, the app starts minimized to the tray.
-- Opt-in ping scanner for private IPv4 CIDR ranges, limited to at most 1022 host addresses, cancellable and exportable as CSV.
-- Profiles and backups stay on the local computer; there is no telemetry.
+- **Per-adapter profiles** — keep separate settings for each network interface.
+- **DHCP and static IPv4** — configure an address, prefix length, gateway, and DNS servers, or return to automatic configuration.
+- **Validation before use** — check profile fields and IPv4 values before saving or applying.
+- **Apply verification and rollback** — read settings back from Windows after applying a profile; if applying or verification fails, attempt to restore the previous settings.
+- **Profile import and export** — move profile definitions using JSON. Imported profiles are validated and are never applied automatically.
+- **Adapter overview** — inspect adapter type, link status, IPv4 addresses, and gateways.
+- **Profile search and filtering** — find profiles by name or network details, filter by adapter, and group by adapter.
+- **System tray** — hide the main window to the tray, quickly apply a saved profile, refresh, or exit.
+- **Optional Windows startup** — start minimized to the system tray.
+- **Private-network scanner** — optionally ping-scan private IPv4 CIDR ranges and export results to CSV. Scans are limited to 1,022 addresses.
+- **Local-first** — profile data stays on the computer; the app has no telemetry.
 
-## Important limitations
+## Safety notes
 
-- Windows displays UAC when the application starts because it runs as administrator. Profile changes do not trigger another UAC prompt. If apply/verification fails, automatic rollback is attempted but cannot be guaranteed if Windows or the adapter becomes unavailable. Keep the backup path and ensure local access to the PC when changing the active adapter.
-- The scanner reports hosts that answer ICMP ping; devices with ping disabled may be omitted, and a response does not identify a host as a PLC.
-- The scanner is limited to private IPv4 ranges and `/22` or smaller networks.
-- Profile application is for IPv4; IPv6, VLAN, proxy, VPN and remote-device management are out of scope.
+- The application requests administrator privileges at startup because changing Windows adapter configuration requires elevation.
+- Before applying a profile, the current adapter settings are kept **in memory**. If an operation fails, the app attempts to restore those settings. No backup file is created, and rollback cannot be guaranteed if Windows or the adapter becomes unavailable.
+- Applying a profile can interrupt connectivity on the selected adapter. When connecting to a remote machine, ensure you have a recovery path before changing the adapter used for remote access.
+- The scanner only checks private IPv4 ranges and is limited to `/22` or narrower networks. It reports hosts that respond to ICMP ping; hosts that block ping may not appear, and a response does not prove that a device is a PLC.
+- The app manages IPv4 only. IPv6, VLANs, proxy settings, VPN configuration, and remote PLC programming are outside its scope.
 
-## Build, test and publish
+## Download
 
-Requires Windows and the .NET 10 SDK.
+Open [GitHub Actions](https://github.com/Furkan-x1/network-profiles/actions) and select the latest successful build. Download the `win-x64` portable single-file artifact from the workflow run's **Artifacts** section.
+
+The app is currently built from source by GitHub Actions; check the latest workflow result before using a build.
+
+## Build from source
+
+### Requirements
+
+- Windows 10 or Windows 11
+- [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0)
+
+### Build and test
+
+Run these commands from the repository root in PowerShell:
 
 ```powershell
-dotnet build .\\src\\NetworkProfiles\\NetworkProfiles.csproj -c Release
-dotnet test .\\tests\\NetworkProfiles.Tests\\NetworkProfiles.Tests.csproj -c Release
-dotnet publish .\\src\\NetworkProfiles\\NetworkProfiles.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\\artifacts\\publish
+dotnet restore .\src\NetworkProfiles\NetworkProfiles.csproj
+dotnet build .\src\NetworkProfiles\NetworkProfiles.csproj -c Release
+dotnet test .\tests\NetworkProfiles.Tests\NetworkProfiles.Tests.csproj -c Release
 ```
 
-GitHub Actions runs the Windows build/tests and publishes a portable single-file `win-x64` artifact. See [Actions](https://github.com/Furkan-x1/network-profiles/actions).
+### Publish a portable executable
 
-## Security behavior
+```powershell
+dotnet publish .\src\NetworkProfiles\NetworkProfiles.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o .\artifacts\publish
+```
 
-- The whole application runs elevated after the startup UAC approval, so adapter changes can run in-process without repeated elevation prompts.
-- Adapter IDs are checked as GUIDs before querying Windows network configuration.
-- Network configuration calls use Windows management APIs, not shell command concatenation.
-- Imported profile JSON is data only and is never executed or applied automatically.
-- Scanner is opt-in, bounded, and restricted to private IPv4 CIDRs.
+The published executable is written to `artifacts\publish`.
+
+## Data location
+
+Saved profiles are stored locally at:
+
+```text
+%LocalAppData%\NetworkProfiles\profiles.json
+```
+
+The application does not automatically create a disk backup of current adapter settings. Rollback state exists only in memory for the duration of a profile-apply operation.
+
+## Project details
+
+- **UI:** WPF
+- **Language:** C#
+- **Target:** .NET 10 for Windows
+- **Network configuration:** Windows management APIs
+- **Profile format:** JSON
+- **Scanner output:** CSV
+
+## License
+
+No license file has been added yet. Until a license is included in the repository, all rights remain with the copyright holder and reuse is not automatically granted.
