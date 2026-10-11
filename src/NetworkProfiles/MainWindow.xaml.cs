@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Data;
 using System.Windows.Forms;
 using Microsoft.Win32;
 using NetworkProfiles.Models;
@@ -22,6 +23,8 @@ public partial class MainWindow : Window
     private readonly NotifyIcon _trayIcon;
     private List<AdapterStatus> _adapters = [];
     private List<NetworkProfile> _profiles = [];
+    private List<ProfileRow> _profileRows = [];
+    private ICollectionView? _profileView;
     private bool _allowExit;
 
     public MainWindow()
@@ -41,6 +44,9 @@ public partial class MainWindow : Window
 
         try { _profiles = _store.Load().ToList(); }
         catch (Exception ex) { StatusText.Text = $"Kayıtlı profiller okunamadı: {ex.Message}"; }
+
+        try { SkipApplyConfirmationCheckBox.IsChecked = IsApplyConfirmationSkipped(); }
+        catch { SkipApplyConfirmationCheckBox.IsChecked = false; }
 
         RefreshAdapters();
         RefreshProfiles();
@@ -99,14 +105,94 @@ public partial class MainWindow : Window
     private void RefreshProfiles()
     {
         var adapterNames = _adapters.ToDictionary(a => a.Id, a => a.Name, StringComparer.OrdinalIgnoreCase);
-        ProfilesGrid.ItemsSource = _profiles.Select(profile => new ProfileRow(
-            profile, profile.Name,
-            adapterNames.TryGetValue(profile.AdapterId, out var name) ? name : "(adaptör bulunamadı)",
-            profile.UseDhcp ? "DHCP" : "Statik",
-            string.IsNullOrWhiteSpace(profile.IPv4Address) ? "—" : profile.IPv4Address,
-            string.IsNullOrWhiteSpace(profile.Gateway) ? "—" : profile.Gateway,
-            profile.DnsServers.Count == 0 ? "Otomatik / yok" : string.Join(", ", profile.DnsServers)
-        )).ToArray();
+        var matchingIds = new NetworkConfigurationService().GetMatchingProfileIds(_profiles);
+        _profileRows = _profiles.Select(profile =>
+        {
+            var adapterName = adapterNames.TryGetValue(profile.AdapterId, out var name) ? name : "(adaptör bulunamadı)";
+            return new ProfileRow(
+                profile, profile.Name, adapterName,
+                matchingIds.Contains(profile.Id) ? "Aktif" : "—",
+                profile.UseDhcp ? "DHCP" : "Statik",
+                string.IsNullOrWhiteSpace(profile.IPv4Address) ? "—" : profile.IPv4Address,
+                string.IsNullOrWhiteSpace(profile.Gateway) ? "—" : profile.Gateway,
+                profile.DnsServers.Count == 0 ? "Otomatik / yok" : string.Join(", ", profile.DnsServers));
+        }).ToList();
+
+        var selectedAdapter = AdapterFilterBox.SelectedItem as string;
+        AdapterFilterBox.ItemsSource = new[] { "Tüm adaptörler" }
+            .Concat(_profileRows.Select(r => r.AdapterName).Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)).ToArray();
+        AdapterFilterBox.SelectedItem = selectedAdapter is not null &&
+            AdapterFilterBox.Items.Contains(selectedAdapter) ? selectedAdapter : "Tüm adaptörler";
+
+        _profileView = CollectionViewSource.GetDefaultView(_profileRows);
+        _profileView.Filter = FilterProfile;
+        UpdateGrouping();
+        ProfilesGrid.ItemsSource = _profileView;
+        ProfileCountText.Text = $"Profil: {_profiles.Count} · Eşleşen aktif profil: {matchingIds.Count}";
+        _profileView.Refresh();
+    }
+
+    private bool FilterProfile(object item)
+    {
+        if (item is not ProfileRow row) return false;
+        var selectedAdapter = AdapterFilterBox.SelectedItem as string;
+        if (!string.IsNullOrWhiteSpace(selectedAdapter) && selectedAdapter != "Tüm adaptörler"
+            && !string.Equals(row.AdapterName, selectedAdapter, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var query = ProfileSearchBox.Text.Trim();
+        if (query.Length == 0) return true;
+        return new[] { row.Name, row.AdapterName, row.Mode, row.IPv4Address, row.Gateway, row.Dns, row.Profile.Notes }
+            .Any(value => value.Contains(query, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private void RefreshProfileFilter()
+    {
+        _profileView?.Refresh();
+        if (ProfileCountText is not null)
+            ProfileCountText.Text = $"Gösterilen: {_profileView?.Cast<object>().Count() ?? 0} / {_profiles.Count}";
+    }
+
+    private void ProfileSearch_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
+        RefreshProfileFilter();
+
+    private void AdapterFilter_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e) =>
+        RefreshProfileFilter();
+
+    private void Grouping_Changed(object sender, RoutedEventArgs e) => UpdateGrouping();
+
+    private void UpdateGrouping()
+    {
+        if (_profileView is null) return;
+        _profileView.GroupDescriptions?.Clear();
+        if (GroupByAdapterCheckBox.IsChecked == true)
+            _profileView.GroupDescriptions?.Add(new PropertyGroupDescription(nameof(ProfileRow.AdapterName)));
+        _profileView.Refresh();
+    }
+
+    private void ApplyConfirmation_Changed(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.CreateSubKey(@"Software\NetworkProfiles");
+            key?.SetValue("SkipApplyConfirmation", SkipApplyConfirmationCheckBox.IsChecked == true ? 1 : 0,
+                RegistryValueKind.DWord);
+            StatusText.Text = SkipApplyConfirmationCheckBox.IsChecked == true
+                ? "Profil uygulama onayı kapatıldı. Sistem tepsisinden yapılan uygulamalar da doğrudan çalışacak."
+                : "Profil uygulama onayı etkinleştirildi.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Tercih kaydedilemedi: {ex.Message}", "Ayar kaydedilemedi",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
+    private static bool IsApplyConfirmationSkipped()
+    {
+        using var key = Registry.CurrentUser.OpenSubKey(@"Software\NetworkProfiles");
+        return Convert.ToInt32(key?.GetValue("SkipApplyConfirmation", 0) ?? 0) == 1;
     }
 
     private void AddProfile_Click(object sender, RoutedEventArgs e)
@@ -178,9 +264,10 @@ public partial class MainWindow : Window
             ? "IPv4 ve DNS otomatik (DHCP)"
             : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nAğ geçidi: {profile.Gateway ?? "yok"}\nDNS: {(profile.DnsServers.Count == 0 ? "otomatik" : string.Join(", ", profile.DnsServers))}";
 
-        if (MessageBox.Show(this,
-            $"'{profile.Name}' profili '{adapterName}' adaptörüne uygulanacak.\n\n{configuration}\n\nMevcut ayarlar yalnızca işlem sırasında bellekte tutulur; hata oluşursa geri yükleme denenir. Dosyaya yedek oluşturulmaz. Devam edilsin mi?",
-            "Ağ profilini uygula", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+        if (SkipApplyConfirmationCheckBox.IsChecked != true &&
+            MessageBox.Show(this,
+                $"'{profile.Name}' profili '{adapterName}' adaptörüne uygulanacak.\n\n{configuration}\n\nMevcut ayarlar yalnızca işlem sırasında bellekte tutulur; hata oluşursa geri yükleme denenir. Dosyaya yedek oluşturulmaz. Devam edilsin mi?",
+                "Ağ profilini uygula", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
         try
@@ -336,6 +423,6 @@ public partial class MainWindow : Window
     }
 
     private sealed record ProfileRow(
-        NetworkProfile Profile, string Name, string AdapterName, string Mode,
+        NetworkProfile Profile, string Name, string AdapterName, string ActiveStatus, string Mode,
         string IPv4Address, string Gateway, string Dns);
 }
