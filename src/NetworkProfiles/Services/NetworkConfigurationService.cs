@@ -41,32 +41,39 @@ public sealed class NetworkConfigurationService
 
         AdapterSnapshot? snapshot = null;
         string? backupPath = null;
+        var stage = "adaptörün mevcut ayarlarını okuma";
         try
         {
             snapshot = ReadSnapshot(profile.AdapterId);
+            stage = "mevcut ayarların yedeğini kaydetme";
             backupPath = SaveBackup(snapshot, profile);
+            stage = "profil ayarlarını Windows'a uygulama";
             ApplyCore(profile);
+            stage = "uygulanan ayarları yeniden okuma";
             var actual = ReadSnapshot(profile.AdapterId);
+            stage = "uygulama sonucunu doğrulama";
             if (!Matches(profile, actual))
-                throw new InvalidOperationException("Uygulama sonrası doğrulama başarısız oldu; önceki ayarlar geri yükleniyor.");
+                throw new InvalidOperationException("Windows tarafından okunan ayarlar profille eşleşmiyor.");
 
             return new(true, "Profil başarıyla uygulandı ve Windows ayarları doğrulandı.", backupPath);
         }
         catch (Exception ex)
         {
+            var detail = $"{stage}: {ex.GetType().Name}: {ex.Message}";
             if (snapshot is not null)
             {
                 try
                 {
+                    stage = "hata sonrası önceki ayarları geri yükleme";
                     Restore(snapshot);
-                    return new(false, $"Profil uygulanamadı. Önceki ayarlar geri yüklendi. Ayrıntı: {ex.Message}", backupPath);
+                    return new(false, $"Profil uygulanamadı. Önceki ayarlar geri yüklendi. Hata aşaması: {detail}", backupPath);
                 }
                 catch (Exception rollbackEx)
                 {
-                    return new(false, $"KRİTİK: Profil uygulanamadı ve otomatik geri yükleme de başarısız oldu. Önceki ayar yedeği: {backupPath ?? "oluşturulamadı"}. Uygulama hatası: {ex.Message} Geri yükleme hatası: {rollbackEx.Message}", backupPath);
+                    return new(false, $"KRİTİK: Profil uygulanamadı ve otomatik geri yükleme de başarısız oldu. Yedek: {backupPath ?? "oluşturulamadı"}. Hata: {detail}. Geri yükleme hatası: {rollbackEx.GetType().Name}: {rollbackEx.Message}", backupPath);
                 }
             }
-            return new(false, $"Ağ ayarları değiştirilmedi veya yedek alınamadı: {ex.Message}", backupPath);
+            return new(false, $"Ağ ayarları değiştirilmedi veya yedek alınamadı. Hata aşaması: {detail}", backupPath);
         }
     }
 
@@ -146,29 +153,26 @@ public sealed class NetworkConfigurationService
             throw new InvalidDataException("Adaptör kimliği geçersiz.");
 
         var wanted = guid.ToString("D");
-        using var searcher = new ManagementObjectSearcher(
-            $"SELECT SettingID FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{{{wanted}}}'");
-        using var matches = searcher.Get();
-
-        foreach (ManagementObject match in matches)
+        // Bind directly to the WMI key instead of retaining or cloning an object
+        // obtained from a disposed query collection.
+        var relativePath = $"Win32_NetworkAdapterConfiguration.SettingID=\"{{{wanted}}}\"";
+        var adapter = new ManagementObject("root\\CIMV2", relativePath, null);
+        try
         {
-            // Do not return an instance owned by the query collection. Create and bind
-            // an independent ManagementObject so disposing the collection cannot invalidate it.
-            var objectPath = match.Path.Path;
-            var adapter = new ManagementObject(objectPath);
-            try
-            {
-                adapter.Get();
-                return adapter;
-            }
-            catch
-            {
-                adapter.Dispose();
-                throw;
-            }
+            adapter.Get();
+            return adapter;
         }
-
-        throw new InvalidOperationException("Bu adaptör etkin IPv4 yapılandırmasına sahip değil veya Windows tarafından bulunamadı.");
+        catch (ManagementException ex)
+        {
+            adapter.Dispose();
+            throw new InvalidOperationException(
+                $"Adaptörün Windows ağ yapılandırması bulunamadı (SettingID={wanted}). WMI: {ex.Message}", ex);
+        }
+        catch
+        {
+            adapter.Dispose();
+            throw;
+        }
     }
 
     private static object? Invoke(ManagementObject adapter, string method, object?[]? args = null)
