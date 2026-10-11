@@ -30,16 +30,22 @@ public sealed class NetworkConfigurationService
             GetStrings(adapter, "DNSServerSearchOrder"));
     }
 
-    public bool MatchesCurrent(NetworkProfile profile)
+    public IReadOnlySet<string> GetMatchingProfileIds(IEnumerable<NetworkProfile> profiles)
     {
-        try
+        var matching = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var group in profiles.GroupBy(p => p.AdapterId, StringComparer.OrdinalIgnoreCase))
         {
-            return Matches(profile, ReadSnapshot(profile.AdapterId));
+            AdapterSnapshot snapshot;
+            try { snapshot = ReadSnapshot(group.Key); }
+            catch { continue; }
+
+            foreach (var profile in group)
+            {
+                if (Matches(profile, snapshot))
+                    matching.Add(profile.Id);
+            }
         }
-        catch
-        {
-            return false;
-        }
+        return matching;
     }
 
     public ApplyResult Apply(NetworkProfile profile)
