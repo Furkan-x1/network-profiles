@@ -14,7 +14,6 @@ public sealed record AdapterSnapshot(
     string[] Gateways,
     string[] DnsServers);
 
-public sealed record ApplyRequest(NetworkProfile Profile, string RequestId);
 public sealed record ApplyResult(bool Success, string Message, string? BackupPath = null);
 
 /// <summary>Applies one profile to one adapter through Windows' network configuration provider.</summary>
@@ -91,25 +90,6 @@ public sealed class NetworkConfigurationService
         CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", snapshot.DnsServers.Length == 0
             ? new object?[] { null }
             : new object?[] { snapshot.DnsServers }), "Önceki DNS ayarları geri yüklenemedi");
-    }
-
-    public static ApplyResult RunElevatedRequest(string requestPath)
-    {
-        try
-        {
-            var request = JsonSerializer.Deserialize<ApplyRequest>(File.ReadAllText(requestPath))
-                ?? throw new InvalidDataException("Uygulama isteği geçersiz.");
-            var result = new NetworkConfigurationService().Apply(request.Profile);
-            var resultPath = Path.ChangeExtension(requestPath, ".result.json");
-            File.WriteAllText(resultPath, JsonSerializer.Serialize(result, JsonOptions));
-            return result;
-        }
-        catch (Exception ex)
-        {
-            var result = new ApplyResult(false, ex.Message);
-            try { File.WriteAllText(Path.ChangeExtension(requestPath, ".result.json"), JsonSerializer.Serialize(result, JsonOptions)); } catch { }
-            return result;
-        }
     }
 
     private static bool Matches(NetworkProfile profile, AdapterSnapshot snapshot)
