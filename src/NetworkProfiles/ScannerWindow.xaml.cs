@@ -29,21 +29,21 @@ public partial class ScannerWindow : Window
         StartButton.IsEnabled = false;
         CancelButton.IsEnabled = true;
         ResultsGrid.ItemsSource = null;
-        var progress = new Progress<int>(count => StatusText.Text = $"Tarama sürüyor… {count} adres kontrol edildi.");
+        var progress = new Progress<int>(count => StatusText.Text = $"Scanning… {count} addresses checked.");
         try
         {
             var results = await _scanner.ScanAsync(CidrBox.Text, progress, _cancellation.Token);
             ResultsGrid.ItemsSource = results;
-            StatusText.Text = $"Tarama tamamlandı. {results.Count} cihaz yanıt verdi.";
+            StatusText.Text = $"Scan complete. {results.Count} hosts responded.";
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Tarama iptal edildi.";
+            StatusText.Text = "Scan cancelled.";
         }
         catch (Exception ex)
         {
             StatusText.Text = ex.Message;
-            MessageBox.Show(this, ex.Message, "Tarama başlatılamadı", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, ex.Message, "Could not start scan", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -60,14 +60,14 @@ public partial class ScannerWindow : Window
     {
         if (ResultsGrid.ItemsSource is not IEnumerable<ScanResult> results)
         {
-            MessageBox.Show(this, "Önce bir tarama yapın.", "Sonuç yok", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, "Run a scan first.", "No results", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         var dialog = new SaveFileDialog
         {
-            Title = "Tarama sonuçlarını dışa aktar",
-            Filter = "CSV dosyası (*.csv)|*.csv",
+            Title = "Export scan results",
+            Filter = "CSV files (*.csv)|*.csv",
             FileName = "network-scan.csv",
             AddExtension = true,
             DefaultExt = ".csv"
@@ -79,11 +79,11 @@ public partial class ScannerWindow : Window
             foreach (var item in results)
                 csv.Append(item.Address).Append(',').Append(item.RoundtripTimeMs).Append(",").Append(item.Status).Append("\r\n");
             File.WriteAllText(dialog.FileName, csv.ToString(), new UTF8Encoding(true));
-            StatusText.Text = $"Sonuçlar dışa aktarıldı: {dialog.FileName}";
+            StatusText.Text = $"Results exported to: {dialog.FileName}";
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Dışa aktarma hatası", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(this, ex.Message, "Export error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
