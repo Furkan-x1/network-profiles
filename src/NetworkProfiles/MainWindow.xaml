@@ -55,6 +55,7 @@
     </TabControl>
     <DockPanel Grid.Row="3" Margin="0,14,0,0">
       <TextBlock x:Name="StatusText" VerticalAlignment="Center" Text="Ağ ayarları okunuyor..." TextWrapping="Wrap"/>
+      <Button Content="Ağ tarayıcı" Padding="10,5" Margin="0,0,8,0" DockPanel.Dock="Right" Click="OpenScanner_Click"/>
       <Button Content="Yenile" Width="100" Padding="10,5" DockPanel.Dock="Right" Click="Refresh_Click"/>
     </DockPanel>
   </Grid>
