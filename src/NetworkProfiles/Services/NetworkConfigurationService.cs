@@ -153,26 +153,36 @@ public sealed class NetworkConfigurationService
             throw new InvalidDataException("Adaptör kimliği geçersiz.");
 
         var wanted = guid.ToString("D");
-        // Bind directly to the WMI key instead of retaining or cloning an object
-        // obtained from a disposed query collection.
-        var relativePath = $"Win32_NetworkAdapterConfiguration.SettingID=\"{{{wanted}}}\"";
-        var adapter = new ManagementObject("root\\CIMV2", relativePath, null);
-        try
+        // Use WQL to locate the configuration, then bind through the path returned
+        // by WMI itself. This avoids hand-constructing a potentially invalid object path.
+        var query = $"SELECT * FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{wanted}'";
+        using var searcher = new ManagementObjectSearcher("root\\CIMV2", query);
+        using var results = searcher.Get();
+        foreach (ManagementObject item in results)
         {
-            adapter.Get();
-            return adapter;
+            using (item)
+            {
+                if (!Guid.TryParse(Convert.ToString(item["SettingID"]), out var found)
+                    || found != guid)
+                    continue;
+
+                var adapter = new ManagementObject(item.Path);
+                try
+                {
+                    adapter.Get();
+                    return adapter;
+                }
+                catch
+                {
+                    adapter.Dispose();
+                    throw;
+                }
+            }
         }
-        catch (ManagementException ex)
-        {
-            adapter.Dispose();
-            throw new InvalidOperationException(
-                $"Adaptörün Windows ağ yapılandırması bulunamadı (SettingID={wanted}). WMI: {ex.Message}", ex);
-        }
-        catch
-        {
-            adapter.Dispose();
-            throw;
-        }
+
+        throw new InvalidOperationException(
+            $"Adaptörün Windows ağ yapılandırması bulunamadı (SettingID={wanted}). " +
+            "WMI sorgusu bu kimlikle eşleşen Win32_NetworkAdapterConfiguration nesnesi döndürmedi.");
     }
 
     private static object? Invoke(ManagementObject adapter, string method, object?[]? args = null)
