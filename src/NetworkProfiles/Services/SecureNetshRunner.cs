@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 namespace NetworkProfiles.Services;
 /// <summary>Guarded fallback process wrapper; unused by the current read-only UI.</summary>
 internal sealed class SecureNetshRunner
