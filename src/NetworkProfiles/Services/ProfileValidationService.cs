@@ -53,8 +53,12 @@ public static class ProfileValidationService
     private static bool TryIPv4(string? value, out IPAddress address)
     {
         address = IPAddress.None;
-        return !string.IsNullOrWhiteSpace(value)
-            && IPAddress.TryParse(value.Trim(), out address!)
-            && address.AddressFamily == AddressFamily.InterNetwork;
+        if (string.IsNullOrWhiteSpace(value)
+            || !IPAddress.TryParse(value.Trim(), out var parsed)
+            || parsed.AddressFamily != AddressFamily.InterNetwork)
+            return false;
+
+        address = parsed;
+        return true;
     }
 }
