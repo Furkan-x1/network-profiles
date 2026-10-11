@@ -270,7 +270,7 @@ public partial class MainWindow : Window
         if (editor.ShowDialog() == true && editor.Profile is { } profile)
         {
             _profiles.Add(profile);
-            SaveProfiles("Profil kaydedildi.");
+            SaveProfiles("Profile saved.");
         }
     }
 
