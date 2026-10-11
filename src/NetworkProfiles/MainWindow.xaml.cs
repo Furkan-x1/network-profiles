@@ -179,7 +179,7 @@ public partial class MainWindow : Window
             : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nAğ geçidi: {profile.Gateway ?? "yok"}\nDNS: {(profile.DnsServers.Count == 0 ? "otomatik" : string.Join(", ", profile.DnsServers))}";
 
         if (MessageBox.Show(this,
-            $"'{profile.Name}' profili '{adapterName}' adaptörüne uygulanacak.\n\n{configuration}\n\nMevcut ayarlar yedeklenecek; doğrulama başarısız olursa geri yükleme denenecek. Devam edilsin mi?",
+            $"'{profile.Name}' profili '{adapterName}' adaptörüne uygulanacak.\n\n{configuration}\n\nMevcut ayarlar yalnızca işlem sırasında bellekte tutulur; hata oluşursa geri yükleme denenir. Dosyaya yedek oluşturulmaz. Devam edilsin mi?",
             "Ağ profilini uygula", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
@@ -189,14 +189,10 @@ public partial class MainWindow : Window
             var result = await Task.Run(() => new NetworkConfigurationService().Apply(profile));
 
             StatusText.Text = result.Message;
-            if (!string.IsNullOrWhiteSpace(result.BackupPath))
-                StatusText.Text += $" Yedek: {result.BackupPath}";
-
             if (result.Success)
                 RefreshAdapters();
 
-            MessageBox.Show(this, result.Message +
-                (string.IsNullOrWhiteSpace(result.BackupPath) ? "" : $"\n\nYedek: {result.BackupPath}"),
+            MessageBox.Show(this, result.Message,
                 result.Success ? "Profil uygulandı" : "Profil uygulanamadı",
                 MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
