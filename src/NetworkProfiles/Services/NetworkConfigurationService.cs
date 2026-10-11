@@ -153,36 +153,80 @@ public sealed class NetworkConfigurationService
             throw new InvalidDataException("Adaptör kimliği geçersiz.");
 
         var wanted = guid.ToString("D");
-        // Use WQL to locate the configuration, then bind through the path returned
-        // by WMI itself. This avoids hand-constructing a potentially invalid object path.
-        var query = $"SELECT * FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{wanted}'";
-        using var searcher = new ManagementObjectSearcher("root\\CIMV2", query);
-        using var results = searcher.Get();
-        foreach (ManagementObject item in results)
+        // NetworkInterface.Id is not guaranteed to equal the configuration's
+        // SettingID on every driver. Resolve the adapter's InterfaceIndex first.
+        var adapterQuery = $"SELECT * FROM Win32_NetworkAdapter WHERE GUID = '{{{wanted}}}'";
+        using var adapterSearcher = new ManagementObjectSearcher("root\\CIMV2", adapterQuery);
+        using var adapterResults = adapterSearcher.Get();
+
+        foreach (ManagementObject networkAdapter in adapterResults)
         {
-            using (item)
+            using (networkAdapter)
             {
-                if (!Guid.TryParse(Convert.ToString(item["SettingID"]), out var found)
-                    || found != guid)
+                if (!Guid.TryParse(Convert.ToString(networkAdapter["GUID"]), out var foundGuid)
+                    || foundGuid != guid)
                     continue;
 
-                var adapter = new ManagementObject(item.Path);
+                if (networkAdapter["InterfaceIndex"] is not null
+                    && int.TryParse(Convert.ToString(networkAdapter["InterfaceIndex"]), out var interfaceIndex))
+                {
+                    var configQuery = $"SELECT * FROM Win32_NetworkAdapterConfiguration WHERE InterfaceIndex = {interfaceIndex}";
+                    using var configSearcher = new ManagementObjectSearcher("root\\CIMV2", configQuery);
+                    using var configResults = configSearcher.Get();
+                    foreach (ManagementObject config in configResults)
+                    {
+                        using (config)
+                        {
+                            if (!int.TryParse(Convert.ToString(config["InterfaceIndex"]), out var foundIndex)
+                                || foundIndex != interfaceIndex)
+                                continue;
+
+                            var result = new ManagementObject(config.Path);
+                            try
+                            {
+                                result.Get();
+                                return result;
+                            }
+                            catch
+                            {
+                                result.Dispose();
+                                throw;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Fallback for drivers where Win32_NetworkAdapter exposes no matching GUID.
+        var configFallbackQuery = $"SELECT * FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{{{wanted}}}'";
+        using var fallbackSearcher = new ManagementObjectSearcher("root\\CIMV2", configFallbackQuery);
+        using var fallbackResults = fallbackSearcher.Get();
+        foreach (ManagementObject config in fallbackResults)
+        {
+            using (config)
+            {
+                if (!Guid.TryParse(Convert.ToString(config["SettingID"]), out var foundGuid)
+                    || foundGuid != guid)
+                    continue;
+
+                var result = new ManagementObject(config.Path);
                 try
                 {
-                    adapter.Get();
-                    return adapter;
+                    result.Get();
+                    return result;
                 }
                 catch
                 {
-                    adapter.Dispose();
+                    result.Dispose();
                     throw;
                 }
             }
         }
 
         throw new InvalidOperationException(
-            $"Adaptörün Windows ağ yapılandırması bulunamadı (SettingID={wanted}). " +
-            "WMI sorgusu bu kimlikle eşleşen Win32_NetworkAdapterConfiguration nesnesi döndürmedi.");
+            $"Adaptörün Windows ağ yapılandırması bulunamadı (NetworkInterface.Id={wanted}). " +
+            "Windows WMI'da bu kimlikle eşleşen adaptör veya IPv4 yapılandırması bulunamadı.");
     }
 
     private static object? Invoke(ManagementObject adapter, string method, object?[]? args = null)
