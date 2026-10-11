@@ -20,7 +20,7 @@ public partial class ProfileEditorWindow : Window
 
         if (profile is not null)
         {
-            Title = "Profili düzenle";
+            Title = "Edit profile";
             NameBox.Text = profile.Name;
             AdapterBox.SelectedValue = profile.AdapterId;
             DhcpCheckBox.IsChecked = profile.UseDhcp;
@@ -32,7 +32,7 @@ public partial class ProfileEditorWindow : Window
         }
         else
         {
-            Title = "Yeni profil";
+            Title = "New profile";
             DhcpCheckBox.IsChecked = true;
             AdapterBox.SelectedIndex = 0;
             PrefixBox.Text = "24";
@@ -76,7 +76,7 @@ public partial class ProfileEditorWindow : Window
         var errors = ProfileValidationService.Validate(candidate);
         if (errors.Count > 0)
         {
-            MessageBox.Show(this, string.Join(Environment.NewLine, errors), "Profil doğrulama hatası",
+            MessageBox.Show(this, string.Join(Environment.NewLine, errors), "Profile validation error",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
