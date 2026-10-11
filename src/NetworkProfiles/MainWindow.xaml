@@ -45,7 +45,8 @@
           <WrapPanel Grid.Row="1" Margin="0,10,0,0" HorizontalAlignment="Right">
             <Button Content="Ekle" Width="86" Margin="4,0" Padding="8,5" Click="AddProfile_Click"/>
             <Button Content="Düzenle" Width="86" Margin="4,0" Padding="8,5" Click="EditProfile_Click"/>
-            <Button Content="Sil" Width="86" Margin="4,0" Padding="8,5" Click="DeleteProfile_Click"/>
+            <Button Content="Uygula" Width="86" Margin="4,0" Padding="8,5" Click="ApplySelected_Click"/>
+            <Button Content="Sil" Width="70" Margin="4,0" Padding="8,5" Click="DeleteProfile_Click"/>
             <Button Content="İçe aktar" Width="96" Margin="4,0" Padding="8,5" Click="ImportProfiles_Click"/>
             <Button Content="Dışa aktar" Width="96" Margin="4,0" Padding="8,5" Click="ExportProfiles_Click"/>
           </WrapPanel>
