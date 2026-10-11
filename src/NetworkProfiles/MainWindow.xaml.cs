@@ -1,6 +1,7 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows.Interop;
+using System.Windows.Input;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Data;
@@ -71,6 +72,39 @@ public partial class MainWindow : Window
 
         if (Environment.GetCommandLineArgs().Contains("--minimized", StringComparer.OrdinalIgnoreCase))
             Hide();
+    }
+
+    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Left) return;
+
+        if (e.ClickCount == 2)
+        {
+            ToggleMaximizeRestore();
+            return;
+        }
+
+        if (WindowState == WindowState.Normal)
+            DragMove();
+    }
+
+    private void MinimizeWindow_Click(object sender, RoutedEventArgs e) =>
+        WindowState = WindowState.Minimized;
+
+    private void MaximizeRestoreWindow_Click(object sender, RoutedEventArgs e) =>
+        ToggleMaximizeRestore();
+
+    private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
+
+    private void ToggleMaximizeRestore() =>
+        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+
+    private void Window_StateChanged(object? sender, EventArgs e)
+    {
+        if (MaximizeRestoreButton is null) return;
+        bool maximized = WindowState == WindowState.Maximized;
+        MaximizeRestoreButton.Content = maximized ? "\uE923" : "\uE922";
+        MaximizeRestoreButton.ToolTip = maximized ? "Geri yükle" : "Büyüt";
     }
 
     private void ApplyDarkWindowFrame()
