@@ -1,6 +1,4 @@
-using System.Diagnostics;
 using System.IO;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -93,7 +91,7 @@ public partial class MainWindow : Window
         {
             _adapters = _discovery.GetAdapters().ToList();
             AdaptersGrid.ItemsSource = _adapters;
-            StatusText.Text = $"{_adapters.Count} adaptör bulundu. Bağlı adaptörler üstte listelenir.";
+            StatusText.Text = $"{_adapters.Count} adaptör bulundu. IPv4 adresi bulunan adaptörler üstte listelenir.";
         }
         catch (Exception ex) { StatusText.Text = $"Adaptör bilgileri okunamadı: {ex.Message}"; }
     }
@@ -185,36 +183,11 @@ public partial class MainWindow : Window
             "Ağ profilini uygula", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "NetworkProfiles", "requests");
-        Directory.CreateDirectory(folder);
-        var requestId = Guid.NewGuid().ToString("N");
-        var requestPath = Path.Combine(folder, requestId + ".json");
-        var resultPath = Path.ChangeExtension(requestPath, ".result.json");
-
         try
         {
-            File.WriteAllText(requestPath, JsonSerializer.Serialize(new ApplyRequest(profile, requestId)));
-            var executable = Environment.ProcessPath;
-            if (string.IsNullOrWhiteSpace(executable))
-                throw new InvalidOperationException("Uygulamanın EXE yolu bulunamadı.");
+            StatusText.Text = "Windows ağ ayarları değiştiriliyor...";
+            var result = await Task.Run(() => new NetworkConfigurationService().Apply(profile));
 
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = executable,
-                Arguments = $"--apply-request \"{requestPath}\"",
-                UseShellExecute = true,
-                Verb = "runas",
-                WorkingDirectory = AppContext.BaseDirectory
-            }) ?? throw new InvalidOperationException("Yönetici işlemi başlatılamadı.");
-
-            StatusText.Text = "Windows ağ ayarları değiştiriliyor; UAC onayı bekleniyor...";
-            await process.WaitForExitAsync();
-
-            if (!File.Exists(resultPath))
-                throw new InvalidOperationException("Yönetici işlemi sonuç dosyası üretmedi. UAC iptal edilmiş veya işlem beklenmedik biçimde sonlanmış olabilir.");
-
-            var result = JsonSerializer.Deserialize<ApplyResult>(File.ReadAllText(resultPath))
-                ?? throw new InvalidDataException("Uygulama sonucu okunamadı.");
             StatusText.Text = result.Message;
             _trayIcon.ShowBalloonTip(5000, "Network Profiles", result.Message,
                 result.Success ? ToolTipIcon.Info : ToolTipIcon.Warning);
@@ -230,20 +203,11 @@ public partial class MainWindow : Window
                 result.Success ? "Profil uygulandı" : "Profil uygulanamadı",
                 MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
-        catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
-        {
-            StatusText.Text = "Yönetici izni verilmedi; ağ ayarları değiştirilmedi.";
-        }
         catch (Exception ex)
         {
             StatusText.Text = $"Profil uygulanamadı: {ex.Message}";
             MessageBox.Show(this, StatusText.Text, "Uygulama hatası",
                 MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-        finally
-        {
-            try { if (File.Exists(requestPath)) File.Delete(requestPath); } catch { }
-            try { if (File.Exists(resultPath)) File.Delete(resultPath); } catch { }
         }
     }
 
