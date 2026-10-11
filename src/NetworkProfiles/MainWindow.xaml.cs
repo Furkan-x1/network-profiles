@@ -189,9 +189,6 @@ public partial class MainWindow : Window
             var result = await Task.Run(() => new NetworkConfigurationService().Apply(profile));
 
             StatusText.Text = result.Message;
-            _trayIcon.ShowBalloonTip(5000, "Network Profiles", result.Message,
-                result.Success ? ToolTipIcon.Info : ToolTipIcon.Warning);
-
             if (!string.IsNullOrWhiteSpace(result.BackupPath))
                 StatusText.Text += $" Yedek: {result.BackupPath}";
 
@@ -325,8 +322,6 @@ public partial class MainWindow : Window
         if (_allowExit) return;
         e.Cancel = true;
         Hide();
-        _trayIcon.ShowBalloonTip(1800, "Network Profiles",
-            "Uygulama sistem tepsisinde çalışmaya devam ediyor.", ToolTipIcon.Info);
     }
 
     private void ExitApplication()
