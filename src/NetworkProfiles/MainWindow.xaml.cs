@@ -47,7 +47,7 @@ public partial class MainWindow : Window
         };
 
         try { _profiles = _store.Load().ToList(); }
-        catch (Exception ex) { StatusText.Text = $"Kayıtlı profiller okunamadı: {ex.Message}"; }
+        catch (Exception ex) { StatusText.Text = $"Could not load saved profiles: {ex.Message}"; }
 
         try { SkipApplyConfirmationCheckBox.IsChecked = IsApplyConfirmationSkipped(); }
         catch { SkipApplyConfirmationCheckBox.IsChecked = false; }
@@ -56,7 +56,7 @@ public partial class MainWindow : Window
         RefreshProfiles();
         RebuildTrayMenu();
         try { StartupCheckBox.IsChecked = _startup.IsEnabled(); }
-        catch (Exception ex) { StatusText.Text = $"Başlangıç ayarı okunamadı: {ex.Message}"; }
+        catch (Exception ex) { StatusText.Text = $"Could not read startup setting: {ex.Message}"; }
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e)
@@ -104,7 +104,7 @@ public partial class MainWindow : Window
         if (MaximizeRestoreButton is null) return;
         bool maximized = WindowState == WindowState.Maximized;
         MaximizeRestoreButton.Content = maximized ? "\uE923" : "\uE922";
-        MaximizeRestoreButton.ToolTip = maximized ? "Geri yükle" : "Büyüt";
+        MaximizeRestoreButton.ToolTip = maximized ? "Restore" : "Maximize";
     }
 
     private void ApplyDarkWindowFrame()
@@ -137,13 +137,13 @@ public partial class MainWindow : Window
         {
             _startup.SetEnabled(StartupCheckBox.IsChecked == true);
             StatusText.Text = StartupCheckBox.IsChecked == true
-                ? "Windows başlangıcı etkin; uygulama sistem tepsisine küçültülerek açılacak."
-                : "Windows başlangıcı devre dışı bırakıldı.";
+                ? "Windows startup is enabled; the app will start minimized to the system tray."
+                : "Windows startup is disabled.";
         }
         catch (Exception ex)
         {
             StartupCheckBox.IsChecked = false;
-            StatusText.Text = $"Başlangıç ayarı değiştirilemedi: {ex.Message}";
+            StatusText.Text = $"Could not change startup setting: {ex.Message}";
             MessageBox.Show(this, StatusText.Text, "Başlangıç ayarı", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -171,28 +171,28 @@ public partial class MainWindow : Window
         var matchingIds = new NetworkConfigurationService().GetMatchingProfileIds(_profiles);
         _profileRows = _profiles.Select(profile =>
         {
-            var adapterName = adapterNames.TryGetValue(profile.AdapterId, out var name) ? name : "(adaptör bulunamadı)";
+            var adapterName = adapterNames.TryGetValue(profile.AdapterId, out var name) ? name : "(adapter not found)";
             return new ProfileRow(
                 profile, profile.Name, adapterName,
-                matchingIds.Contains(profile.Id) ? "Aktif" : "—",
-                profile.UseDhcp ? "DHCP" : "Statik",
+                matchingIds.Contains(profile.Id) ? "Active" : "—",
+                profile.UseDhcp ? "DHCP" : "Static",
                 string.IsNullOrWhiteSpace(profile.IPv4Address) ? "—" : profile.IPv4Address,
                 string.IsNullOrWhiteSpace(profile.Gateway) ? "—" : profile.Gateway,
-                profile.DnsServers.Count == 0 ? "Otomatik / yok" : string.Join(", ", profile.DnsServers));
+                profile.DnsServers.Count == 0 ? "Automatic / none" : string.Join(", ", profile.DnsServers));
         }).ToList();
 
         var selectedAdapter = AdapterFilterBox.SelectedItem as string;
-        AdapterFilterBox.ItemsSource = new[] { "Tüm adaptörler" }
+        AdapterFilterBox.ItemsSource = new[] { "All adapters" }
             .Concat(_profileRows.Select(r => r.AdapterName).Distinct(StringComparer.OrdinalIgnoreCase)
                 .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)).ToArray();
         AdapterFilterBox.SelectedItem = selectedAdapter is not null &&
-            AdapterFilterBox.Items.Contains(selectedAdapter) ? selectedAdapter : "Tüm adaptörler";
+            AdapterFilterBox.Items.Contains(selectedAdapter) ? selectedAdapter : "All adapters";
 
         _profileView = CollectionViewSource.GetDefaultView(_profileRows);
         _profileView.Filter = FilterProfile;
         UpdateGrouping();
         ProfilesGrid.ItemsSource = _profileView;
-        ProfileCountText.Text = $"Profil: {_profiles.Count} · Eşleşen aktif profil: {matchingIds.Count}";
+        ProfileCountText.Text = $"Profiles: {_profiles.Count} · Active matches: {matchingIds.Count}";
         _profileView.Refresh();
     }
 
@@ -200,7 +200,7 @@ public partial class MainWindow : Window
     {
         if (item is not ProfileRow row) return false;
         var selectedAdapter = AdapterFilterBox.SelectedItem as string;
-        if (!string.IsNullOrWhiteSpace(selectedAdapter) && selectedAdapter != "Tüm adaptörler"
+        if (!string.IsNullOrWhiteSpace(selectedAdapter) && selectedAdapter != "All adapters"
             && !string.Equals(row.AdapterName, selectedAdapter, StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -214,7 +214,7 @@ public partial class MainWindow : Window
     {
         _profileView?.Refresh();
         if (ProfileCountText is not null)
-            ProfileCountText.Text = $"Gösterilen: {_profileView?.Cast<object>().Count() ?? 0} / {_profiles.Count}";
+            ProfileCountText.Text = $"Showing: {_profileView?.Cast<object>().Count() ?? 0} / {_profiles.Count}";
     }
 
     private void ProfileSearch_Changed(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
@@ -262,7 +262,7 @@ public partial class MainWindow : Window
     {
         if (_adapters.Count == 0)
         {
-            MessageBox.Show(this, "Önce en az bir ağ adaptörü algılanmalıdır.", "Profil eklenemedi",
+            MessageBox.Show(this, "At least one network adapter must be detected first.", "Could not add profile",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -278,7 +278,7 @@ public partial class MainWindow : Window
     {
         if (ProfilesGrid.SelectedItem is not ProfileRow row)
         {
-            MessageBox.Show(this, "Düzenlemek için bir profil seçin.", "Profil seçilmedi",
+            MessageBox.Show(this, "Select a profile to edit.", "No profile selected",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -289,7 +289,7 @@ public partial class MainWindow : Window
             if (index >= 0)
             {
                 _profiles[index] = updated;
-                SaveProfiles("Profil güncellendi.");
+                SaveProfiles("Profile updated.");
             }
         }
     }
@@ -298,22 +298,22 @@ public partial class MainWindow : Window
     {
         if (ProfilesGrid.SelectedItem is not ProfileRow row)
         {
-            MessageBox.Show(this, "Silmek için bir profil seçin.", "Profil seçilmedi",
+            MessageBox.Show(this, "Select a profile to delete.", "No profile selected",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (MessageBox.Show(this, $"'{row.Name}' profili silinsin mi?", "Profili sil",
+        if (MessageBox.Show(this, $"'{row.Name}'? Do you want to delete this profile?", "Delete profile",
                 MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
         _profiles.RemoveAll(p => p.Id == row.Profile.Id);
-        SaveProfiles("Profil silindi.");
+        SaveProfiles("Profile deleted.");
     }
 
     private async void ApplySelected_Click(object sender, RoutedEventArgs e)
     {
         if (ProfilesGrid.SelectedItem is not ProfileRow row)
         {
-            MessageBox.Show(this, "Uygulamak için bir profil seçin.", "Profil seçilmedi",
+            MessageBox.Show(this, "Select a profile to apply.", "No profile selected",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
@@ -347,13 +347,13 @@ public partial class MainWindow : Window
             }
 
             MessageBox.Show(this, result.Message,
-                result.Success ? "Profil uygulandı" : "Profil uygulanamadı",
+                result.Success ? "Profile applied" : "Could not apply profile",
                 MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Profil uygulanamadı: {ex.Message}";
-            MessageBox.Show(this, StatusText.Text, "Uygulama hatası",
+            StatusText.Text = $"Could not apply profile: {ex.Message}";
+            MessageBox.Show(this, StatusText.Text, "Apply error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -362,8 +362,8 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Profil JSON dosyasını seç",
-            Filter = "JSON dosyaları (*.json)|*.json|Tüm dosyalar (*.*)|*.*",
+            Title = "Select profile JSON file",
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
             CheckFileExists = true,
             Multiselect = false
         };
@@ -373,13 +373,13 @@ public partial class MainWindow : Window
             var imported = _store.ImportFrom(dialog.FileName)
                 .Select(p => p with { Id = Guid.NewGuid().ToString("N") }).ToList();
             if (_profiles.Count + imported.Count > 500)
-                throw new InvalidDataException("En fazla 500 profil saklanabilir.");
+                throw new InvalidDataException("A maximum of 500 profiles can be stored.");
             _profiles.AddRange(imported);
             SaveProfiles($"{imported.Count} profil içe aktarıldı. Ağ ayarları otomatik uygulanmadı.");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Profil içe aktarılamadı: {ex.Message}", "İçe aktarma hatası",
+            MessageBox.Show(this, $"Could not import profiles: {ex.Message}", "Import error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -388,7 +388,7 @@ public partial class MainWindow : Window
     {
         var dialog = new SaveFileDialog
         {
-            Title = "Profilleri dışa aktar",
+            Title = "Export profiles",
             Filter = "JSON dosyaları (*.json)|*.json",
             FileName = "network-profiles.json",
             DefaultExt = ".json",
@@ -402,7 +402,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Profiller dışa aktarılamadı: {ex.Message}", "Dışa aktarma hatası",
+            MessageBox.Show(this, $"Could not export profiles: {ex.Message}", "Dışa aktarma hatası",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -418,8 +418,8 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            StatusText.Text = $"Profil kaydedilemedi: {ex.Message}";
-            MessageBox.Show(this, StatusText.Text, "Kayıt hatası",
+            StatusText.Text = $"Could not save profile: {ex.Message}";
+            MessageBox.Show(this, StatusText.Text, "Save error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -427,11 +427,11 @@ public partial class MainWindow : Window
     private void RebuildTrayMenu()
     {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Network Profiles'ı aç", null, (_, _) => ShowWindow());
-        var profilesMenu = new ToolStripMenuItem("Profili hızlı uygula");
+        menu.Items.Add("Open Network Profiles", null, (_, _) => ShowWindow());
+        var profilesMenu = new ToolStripMenuItem("Quick apply profile");
         if (_profiles.Count == 0)
         {
-            profilesMenu.DropDownItems.Add("(Kayıtlı profil yok)", null, null).Enabled = false;
+            profilesMenu.DropDownItems.Add("(No saved profiles)", null, null).Enabled = false;
         }
         else
         {
@@ -448,13 +448,13 @@ public partial class MainWindow : Window
         }
         menu.Items.Add(profilesMenu);
         menu.Items.Add(new ToolStripSeparator());
-        menu.Items.Add("Yenile", null, (_, _) =>
+        menu.Items.Add("Refresh", null, (_, _) =>
         {
             RefreshAdapters();
             RefreshProfiles();
             RebuildTrayMenu();
         });
-        menu.Items.Add("Çıkış", null, (_, _) => ExitApplication());
+        menu.Items.Add("Exit", null, (_, _) => ExitApplication());
         var oldMenu = _trayIcon.ContextMenuStrip;
         _trayIcon.ContextMenuStrip = menu;
         oldMenu?.Dispose();
