@@ -1,4 +1,5 @@
 using System.Management;
+using System.IO;
 using System.Net;
 using System.Text.Json;
 using NetworkProfiles.Models;
@@ -170,7 +171,26 @@ public sealed class NetworkConfigurationService
 
     private static object? Invoke(ManagementObject adapter, string method, object?[]? args = null)
     {
-        using var result = adapter.InvokeMethod(method, args ?? Array.Empty<object>());
+        using var input = adapter.GetMethodParameters(method);
+        if (input is not null && args is not null)
+        {
+            switch (method)
+            {
+                case "EnableStatic":
+                    input["IPAddress"] = args[0];
+                    input["SubnetMask"] = args[1];
+                    break;
+                case "SetGateways":
+                    input["DefaultIPGateway"] = args[0];
+                    input["GatewayCostMetric"] = args[1];
+                    break;
+                case "SetDNSServerSearchOrder":
+                    input["DNSServerSearchOrder"] = args[0];
+                    break;
+            }
+        }
+
+        using var result = adapter.InvokeMethod(method, input, null);
         return result?["ReturnValue"];
     }
 
