@@ -55,6 +55,12 @@ public partial class MainWindow : Window
         RebuildTrayMenu();
     }
 
+    private void OpenScanner_Click(object sender, RoutedEventArgs e)
+    {
+        var scanner = new ScannerWindow { Owner = this };
+        scanner.ShowDialog();
+    }
+
     private void RefreshAdapters()
     {
         try
