@@ -55,7 +55,7 @@ public sealed class ProfileValidationTests
             PrefixLength = prefix
         };
 
-        Assert.Contains(ProfileValidationService.Validate(profile), error => error.Contains("Önek"));
+        Assert.Contains(ProfileValidationService.Validate(profile), error => error.Contains("Prefix length"));
     }
 
     [Fact]
