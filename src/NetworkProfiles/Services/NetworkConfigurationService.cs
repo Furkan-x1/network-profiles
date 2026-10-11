@@ -76,21 +76,21 @@ public sealed class NetworkConfigurationService
         using var adapter = FindAdapter(snapshot.AdapterId);
         if (snapshot.DhcpEnabled)
         {
-            Invoke(adapter, "EnableDHCP");
-            Invoke(adapter, "SetDNSServerSearchOrder", new object?[] { null });
+            CheckResult(Invoke(adapter, "EnableDHCP"), "DHCP etkinleştirilemedi");
+            CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", new object?[] { null }), "DNS otomatiğe alınamadı");
             return;
         }
 
         if (snapshot.IpAddresses.Length == 0 || snapshot.Subnets.Length == 0)
             throw new InvalidOperationException("Yedekte statik IPv4 adresi bulunamadığından geri yükleme yapılamıyor.");
 
-        Invoke(adapter, "EnableStatic", new object[] { snapshot.IpAddresses, snapshot.Subnets });
-        Invoke(adapter, "SetGateways", snapshot.Gateways.Length == 0
+        CheckResult(Invoke(adapter, "EnableStatic", new object[] { snapshot.IpAddresses, snapshot.Subnets }), "Önceki statik IPv4 ayarları geri yüklenemedi");
+        CheckResult(Invoke(adapter, "SetGateways", snapshot.Gateways.Length == 0
             ? new object?[] { Array.Empty<string>(), Array.Empty<ushort>() }
-            : new object?[] { snapshot.Gateways, Enumerable.Repeat((ushort)1, snapshot.Gateways.Length).ToArray() });
-        Invoke(adapter, "SetDNSServerSearchOrder", snapshot.DnsServers.Length == 0
+            : new object?[] { snapshot.Gateways, Enumerable.Repeat((ushort)1, snapshot.Gateways.Length).ToArray() }), "Önceki ağ geçidi geri yüklenemedi");
+        CheckResult(Invoke(adapter, "SetDNSServerSearchOrder", snapshot.DnsServers.Length == 0
             ? new object?[] { null }
-            : new object?[] { snapshot.DnsServers });
+            : new object?[] { snapshot.DnsServers }), "Önceki DNS ayarları geri yüklenemedi");
     }
 
     public static ApplyResult RunElevatedRequest(string requestPath)
@@ -167,9 +167,27 @@ public sealed class NetworkConfigurationService
 
         var wanted = guid.ToString("D");
         using var searcher = new ManagementObjectSearcher(
-            $"SELECT SettingID, DHCPEnabled, IPAddress, IPSubnet, DefaultIPGateway, DNSServerSearchOrder FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{{{wanted}}}'");
-        foreach (ManagementObject item in searcher.Get())
-            return item;
+            $"SELECT SettingID FROM Win32_NetworkAdapterConfiguration WHERE SettingID = '{{{wanted}}}'");
+        using var matches = searcher.Get();
+
+        foreach (ManagementObject match in matches)
+        {
+            // Do not return an instance owned by the query collection. Create and bind
+            // an independent ManagementObject so disposing the collection cannot invalidate it.
+            var objectPath = match.Path.Path;
+            var adapter = new ManagementObject(objectPath);
+            try
+            {
+                adapter.Get();
+                return adapter;
+            }
+            catch
+            {
+                adapter.Dispose();
+                throw;
+            }
+        }
+
         throw new InvalidOperationException("Bu adaptör etkin IPv4 yapılandırmasına sahip değil veya Windows tarafından bulunamadı.");
     }
 
