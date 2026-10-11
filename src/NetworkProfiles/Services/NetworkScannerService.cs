@@ -14,16 +14,16 @@ public sealed class NetworkScannerService
     {
         var (network, prefix) = ParseCidr(cidr);
         if (!IsPrivate(network))
-            throw new ArgumentException("Tarama yalnızca özel IPv4 ağlarında (10/8, 172.16/12, 192.168/16) yapılabilir.");
+            throw new ArgumentException("Scanning is restricted to private IPv4 networks (10/8, 172.16/12, 192.168/16).");
         if (prefix < 22)
-            throw new ArgumentException("Güvenlik ve performans için ağ aralığı en fazla 1022 cihaz içerebilir (önek /22 veya daha dar).");
+            throw new ArgumentException("For safety and performance, a scan can include at most 1,022 hosts (prefix /22 or narrower).");
 
         var networkValue = ToUInt32(network);
         var mask = prefix == 0 ? 0u : uint.MaxValue << (32 - prefix);
         var first = (networkValue & mask) + 1;
         var last = (networkValue | ~mask) - 1;
         if (last < first)
-            throw new ArgumentException("Bu CIDR aralığında taranabilir ana makine yok.");
+            throw new ArgumentException("This CIDR range contains no scannable hosts.");
 
         var addresses = Enumerable.Range(0, checked((int)(last - first + 1)))
             .Select(i => FromUInt32(first + (uint)i).ToString()).ToArray();
@@ -43,7 +43,7 @@ public sealed class NetworkScannerService
                     var reply = await ping.SendPingAsync(IPAddress.Parse(address), 450).WaitAsync(cancellationToken)
                         .ConfigureAwait(false);
                     if (reply.Status == IPStatus.Success)
-                        results.Add(new ScanResult(address, reply.RoundtripTime, "Yanıt verdi"));
+                        results.Add(new ScanResult(address, reply.RoundtripTime, "Responded"));
                 }
                 catch (PingException) { }
                 catch (TimeoutException) { }
@@ -66,7 +66,7 @@ public sealed class NetworkScannerService
         if (parts.Length != 2 || !IPAddress.TryParse(parts[0], out var address)
             || address.AddressFamily != AddressFamily.InterNetwork
             || !int.TryParse(parts[1], out var prefix) || prefix is < 16 or > 30)
-            throw new ArgumentException("CIDR biçimi geçersiz. Örnek: 192.168.1.0/24");
+            throw new ArgumentException("Invalid CIDR format. Example: 192.168.1.0/24");
 
         var value = ToUInt32(address);
         var mask = uint.MaxValue << (32 - prefix);
