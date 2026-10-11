@@ -29,8 +29,9 @@ public sealed class AdapterDiscoveryService
                     ipv4.Length == 0 ? "—" : string.Join(", ", ipv4),
                     gateways.Length == 0 ? "—" : string.Join(", ", gateways));
             })
-            // Keep connected adapters at the top; sort alphabetically within each group.
-            .OrderByDescending(a => string.Equals(a.Status, OperationalStatus.Up.ToString(), StringComparison.OrdinalIgnoreCase))
+            // An assigned IPv4 address is a more useful first signal than link state alone.
+            .OrderByDescending(a => !string.Equals(a.IPv4, "—", StringComparison.Ordinal))
+            .ThenByDescending(a => string.Equals(a.Status, OperationalStatus.Up.ToString(), StringComparison.OrdinalIgnoreCase))
             .ThenBy(a => a.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
