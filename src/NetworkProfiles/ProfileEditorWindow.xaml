@@ -13,33 +13,33 @@
           <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
           <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <TextBlock Text="Profil adı" VerticalAlignment="Center" Margin="0,7"/>
+        <TextBlock Text="Profile name" VerticalAlignment="Center" Margin="0,7"/>
         <TextBox x:Name="NameBox" Grid.Column="1" Margin="0,4" Padding="6"/>
-        <TextBlock Grid.Row="1" Text="Ağ adaptörü" VerticalAlignment="Center" Margin="0,7"/>
+        <TextBlock Grid.Row="1" Text="Network adapter" VerticalAlignment="Center" Margin="0,7"/>
         <ComboBox x:Name="AdapterBox" Grid.Row="1" Grid.Column="1" Margin="0,4" Padding="6"
                   DisplayMemberPath="Name" SelectedValuePath="Id"/>
-        <TextBlock Grid.Row="2" Text="IP yapılandırması" VerticalAlignment="Center" Margin="0,7"/>
-        <CheckBox x:Name="DhcpCheckBox" Grid.Row="2" Grid.Column="1" Content="IP ve DNS'yi otomatik al (DHCP)"
+        <TextBlock Grid.Row="2" Text="IP configuration" VerticalAlignment="Center" Margin="0,7"/>
+        <CheckBox x:Name="DhcpCheckBox" Grid.Row="2" Grid.Column="1" Content="Obtain IP and DNS automatically (DHCP)"
                   Margin="0,7" Checked="Dhcp_Changed" Unchecked="Dhcp_Changed"/>
-        <TextBlock Grid.Row="3" Text="IPv4 adresi" VerticalAlignment="Center" Margin="0,7"/>
+        <TextBlock Grid.Row="3" Text="IPv4 address" VerticalAlignment="Center" Margin="0,7"/>
         <TextBox x:Name="AddressBox" Grid.Row="3" Grid.Column="1" Margin="0,4" Padding="6"/>
-        <TextBlock Grid.Row="4" Text="Önek uzunluğu" VerticalAlignment="Center" Margin="0,7"/>
+        <TextBlock Grid.Row="4" Text="Prefix length" VerticalAlignment="Center" Margin="0,7"/>
         <TextBox x:Name="PrefixBox" Grid.Row="4" Grid.Column="1" Margin="0,4" Padding="6" Text="24"/>
-        <TextBlock Grid.Row="5" Text="Ağ geçidi" VerticalAlignment="Center" Margin="0,7"/>
+        <TextBlock Grid.Row="5" Text="Gateway" VerticalAlignment="Center" Margin="0,7"/>
         <TextBox x:Name="GatewayBox" Grid.Row="5" Grid.Column="1" Margin="0,4" Padding="6"/>
-        <TextBlock Grid.Row="6" Text="DNS sunucuları" VerticalAlignment="Top" Margin="0,7"/>
+        <TextBlock Grid.Row="6" Text="DNS servers" VerticalAlignment="Top" Margin="0,7"/>
         <TextBox x:Name="DnsBox" Grid.Row="6" Grid.Column="1" Margin="0,4" Padding="6"
-                 ToolTip="Birden fazla IPv4 adresini virgülle ayırın."/>
-        <TextBlock Grid.Row="7" Text="Notlar" VerticalAlignment="Top" Margin="0,7"/>
+                 ToolTip="Separate multiple IPv4 addresses with commas."/>
+        <TextBlock Grid.Row="7" Text="Notes" VerticalAlignment="Top" Margin="0,7"/>
         <TextBox x:Name="NotesBox" Grid.Row="7" Grid.Column="1" Margin="0,4" Padding="6"
                  AcceptsReturn="True" TextWrapping="Wrap" MinHeight="72" VerticalScrollBarVisibility="Auto"/>
         <TextBlock Grid.Row="8" Grid.ColumnSpan="2" Margin="0,10,0,0" Foreground="{StaticResource MutedTextBrush}"
-                   TextWrapping="Wrap" Text="Bu pencerede profil yalnızca kaydedilir. Windows ağ ayarları henüz değiştirilmez."/>
+                   TextWrapping="Wrap" Text="This window only saves the profile. Windows network settings are not changed until you apply it."/>
       </Grid>
     </ScrollViewer>
     <DockPanel Grid.Row="1" Margin="0,14,0,0" LastChildFill="False">
-      <Button Content="İptal" Width="90" Padding="10,6" Margin="0,0,8,0" IsCancel="True" DockPanel.Dock="Right"/>
-      <Button Content="Kaydet" Width="100" Padding="10,6" IsDefault="True" Click="Save_Click" DockPanel.Dock="Right"/>
+      <Button Content="Cancel" Width="90" Padding="10,6" Margin="0,0,8,0" IsCancel="True" DockPanel.Dock="Right"/>
+      <Button Content="Save" Width="100" Padding="10,6" IsDefault="True" Click="Save_Click" DockPanel.Dock="Right"/>
     </DockPanel>
   </Grid>
 </Window>
