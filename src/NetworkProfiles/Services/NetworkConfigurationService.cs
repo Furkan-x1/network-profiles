@@ -30,6 +30,18 @@ public sealed class NetworkConfigurationService
             GetStrings(adapter, "DNSServerSearchOrder"));
     }
 
+    public bool MatchesCurrent(NetworkProfile profile)
+    {
+        try
+        {
+            return Matches(profile, ReadSnapshot(profile.AdapterId));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public ApplyResult Apply(NetworkProfile profile)
     {
         var errors = ProfileValidationService.Validate(profile);
