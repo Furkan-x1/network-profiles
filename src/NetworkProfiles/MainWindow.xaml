@@ -1,47 +1,61 @@
 <Window x:Class="NetworkProfiles.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Network Profiles" Height="600" Width="1000" MinHeight="480" MinWidth="760"
+        Title="Network Profiles" Height="660" Width="1120" MinHeight="520" MinWidth="820"
         WindowStartupLocation="CenterScreen" Closing="Window_Closing" Loaded="Window_Loaded">
   <Grid Margin="22">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="*"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <DockPanel Grid.Row="0">
       <Border Width="42" Height="42" CornerRadius="10" Background="{StaticResource AccentBrush}" DockPanel.Dock="Left" Margin="0,0,12,0">
-        <TextBlock Text="NP" FontSize="16" FontWeight="Bold" Foreground="White"
-                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        <TextBlock Text="NP" FontSize="16" FontWeight="Bold" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
       </Border>
       <StackPanel VerticalAlignment="Center">
         <TextBlock FontSize="23" FontWeight="SemiBold" Text="Network Profiles"/>
-        <TextBlock Margin="0,3,0,0" Foreground="{StaticResource MutedTextBrush}"
-                   Text="PLC bağlantıları için IPv4 profillerini yönetin"/>
+        <TextBlock Margin="0,3,0,0" Foreground="{StaticResource MutedTextBrush}" Text="PLC bağlantıları için IPv4 profillerini yönetin"/>
       </StackPanel>
     </DockPanel>
     <TextBlock Grid.Row="1" Margin="0,14,0,14" Foreground="{StaticResource MutedTextBrush}"
-               Text="Profilleri kaydedin, istediğiniz adaptöre uygulayın ve gerektiğinde DHCP'ye dönün."/>
+               Text="Profilleri arayın, adaptöre göre filtreleyin ve mevcut ağ yapılandırmasıyla eşleşen profili görün."/>
+
     <TabControl Grid.Row="2">
       <TabItem Header="Profiller">
         <Grid Margin="10">
-          <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <DataGrid x:Name="ProfilesGrid" IsReadOnly="True" AutoGenerateColumns="False"
+          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+          <DockPanel Grid.Row="0" Margin="0,0,0,10">
+            <TextBox x:Name="ProfileSearchBox" Width="250" ToolTip="Profil adı, IP, ağ geçidi veya DNS ile ara"
+                     TextChanged="ProfileSearch_Changed" VerticalContentAlignment="Center" Margin="0,0,8,0"/>
+            <ComboBox x:Name="AdapterFilterBox" Width="220" SelectionChanged="AdapterFilter_Changed"
+                      ToolTip="Adaptöre göre filtrele" VerticalContentAlignment="Center"/>
+            <CheckBox x:Name="GroupByAdapterCheckBox" Content="Adaptöre göre grupla" IsChecked="True"
+                      Margin="16,0,0,0" VerticalAlignment="Center" Checked="Grouping_Changed" Unchecked="Grouping_Changed"/>
+          </DockPanel>
+          <DataGrid x:Name="ProfilesGrid" Grid.Row="1" IsReadOnly="True" AutoGenerateColumns="False"
                     CanUserAddRows="False" SelectionMode="Single" HeadersVisibility="Column"
                     AlternationCount="2" RowHeaderWidth="0">
+            <DataGrid.GroupStyle>
+              <GroupStyle>
+                <GroupStyle.HeaderTemplate>
+                  <DataTemplate>
+                    <Border Background="{StaticResource SurfaceAltBrush}" Padding="8,6" Margin="0,4,0,2" CornerRadius="4">
+                      <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="{StaticResource TextBrush}"/>
+                    </Border>
+                  </DataTemplate>
+                </GroupStyle.HeaderTemplate>
+              </GroupStyle>
+            </DataGrid.GroupStyle>
             <DataGrid.Columns>
-              <DataGridTextColumn Header="Profil" Binding="{Binding Name}" Width="1.5*"/>
-              <DataGridTextColumn Header="Adaptör" Binding="{Binding AdapterName}" Width="2*"/>
+              <DataGridTextColumn Header="Profil" Binding="{Binding Name}" Width="1.4*"/>
+              <DataGridTextColumn Header="Durum" Binding="{Binding ActiveStatus}" Width="*"/>
+              <DataGridTextColumn Header="Adaptör" Binding="{Binding AdapterName}" Width="1.7*"/>
               <DataGridTextColumn Header="IPv4 modu" Binding="{Binding Mode}" Width="*"/>
               <DataGridTextColumn Header="IPv4 adresi" Binding="{Binding IPv4Address}" Width="*"/>
               <DataGridTextColumn Header="Ağ geçidi" Binding="{Binding Gateway}" Width="*"/>
-              <DataGridTextColumn Header="DNS" Binding="{Binding Dns}" Width="1.5*"/>
+              <DataGridTextColumn Header="DNS" Binding="{Binding Dns}" Width="1.4*"/>
             </DataGrid.Columns>
           </DataGrid>
-          <DockPanel Grid.Row="1" Margin="0,12,0,0" LastChildFill="False">
-            <TextBlock Text="{Binding ElementName=ProfilesGrid, Path=Items.Count, StringFormat='Kayıtlı profil: {0}'}"
-                       Foreground="{StaticResource MutedTextBrush}" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+          <DockPanel Grid.Row="2" Margin="0,12,0,0" LastChildFill="False">
+            <TextBlock x:Name="ProfileCountText" Text="Kayıtlı profil: 0" Foreground="{StaticResource MutedTextBrush}"
+                       VerticalAlignment="Center" DockPanel.Dock="Left"/>
             <WrapPanel HorizontalAlignment="Right" DockPanel.Dock="Right">
               <Button Content="Ekle" MinWidth="76" Margin="4,0" Click="AddProfile_Click"/>
               <Button Content="Düzenle" MinWidth="84" Margin="4,0" Click="EditProfile_Click"/>
@@ -56,9 +70,8 @@
       <TabItem Header="Ağ adaptörleri">
         <Grid Margin="10">
           <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <DataGrid x:Name="AdaptersGrid" IsReadOnly="True" AutoGenerateColumns="False"
-                    CanUserAddRows="False" SelectionMode="Single" HeadersVisibility="Column"
-                    RowHeaderWidth="0">
+          <DataGrid x:Name="AdaptersGrid" IsReadOnly="True" AutoGenerateColumns="False" CanUserAddRows="False"
+                    SelectionMode="Single" HeadersVisibility="Column" RowHeaderWidth="0">
             <DataGrid.Columns>
               <DataGridTextColumn Header="Adaptör" Binding="{Binding Name}" Width="2*"/>
               <DataGridTextColumn Header="Tür" Binding="{Binding Type}" Width="*"/>
@@ -73,12 +86,15 @@
       </TabItem>
     </TabControl>
     <DockPanel Grid.Row="3" Margin="0,14,0,0" LastChildFill="True">
-      <CheckBox x:Name="StartupCheckBox" Content="Windows ile başlat (tepsiye küçült)" VerticalAlignment="Center"
-                Margin="0,0,16,0" DockPanel.Dock="Left" Click="Startup_Changed"/>
+      <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" VerticalAlignment="Center">
+        <CheckBox x:Name="StartupCheckBox" Content="Windows ile başlat" VerticalAlignment="Center"
+                  Margin="0,0,16,0" Click="Startup_Changed"/>
+        <CheckBox x:Name="SkipApplyConfirmationCheckBox" Content="Uygulama onayını sorma"
+                  VerticalAlignment="Center" Margin="0,0,16,0" Click="ApplyConfirmation_Changed"/>
+      </StackPanel>
       <Button Content="Ağ tarayıcı" Padding="10,5" Margin="0,0,8,0" DockPanel.Dock="Right" Click="OpenScanner_Click"/>
       <Button Content="Yenile" MinWidth="82" Padding="10,5" Margin="0,0,8,0" DockPanel.Dock="Right" Click="Refresh_Click"/>
-      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource MutedTextBrush}"
-                 Text="Ağ ayarları okunuyor..." TextWrapping="Wrap"/>
+      <TextBlock x:Name="StatusText" VerticalAlignment="Center" Foreground="{StaticResource MutedTextBrush}" Text="Ağ ayarları okunuyor..." TextWrapping="Wrap"/>
     </DockPanel>
   </Grid>
 </Window>
