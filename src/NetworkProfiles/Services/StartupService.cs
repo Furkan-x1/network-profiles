@@ -18,7 +18,7 @@ public sealed class StartupService
     public void SetEnabled(bool enabled)
     {
         using var key = Registry.CurrentUser.CreateSubKey(RunKey, writable: true)
-            ?? throw new InvalidOperationException("Kullanıcı başlangıç kayıt defteri anahtarı açılamadı.");
+            ?? throw new InvalidOperationException("Could not open the user startup registry key.");
 
         if (!enabled)
         {
@@ -28,7 +28,7 @@ public sealed class StartupService
 
         var executable = Environment.ProcessPath;
         if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable))
-            throw new InvalidOperationException("Başlangıç için uygulama EXE yolu bulunamadı. Uygulamayı yayımlanmış EXE olarak çalıştırın.");
+            throw new InvalidOperationException("Could not locate the application EXE for startup. Run the published executable.");
 
         key.SetValue(ValueName, $"\"{executable}\" --minimized", RegistryValueKind.String);
     }
