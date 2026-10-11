@@ -86,7 +86,7 @@ public sealed class NetworkConfigurationService
 
         Invoke(adapter, "EnableStatic", new object[] { snapshot.IpAddresses, snapshot.Subnets });
         Invoke(adapter, "SetGateways", snapshot.Gateways.Length == 0
-            ? new object?[] { null, null }
+            ? new object?[] { Array.Empty<string>(), Array.Empty<ushort>() }
             : new object?[] { snapshot.Gateways, Enumerable.Repeat((ushort)1, snapshot.Gateways.Length).ToArray() });
         Invoke(adapter, "SetDNSServerSearchOrder", snapshot.DnsServers.Length == 0
             ? new object?[] { null }
@@ -118,8 +118,12 @@ public sealed class NetworkConfigurationService
             return snapshot.DhcpEnabled;
         if (snapshot.DhcpEnabled || !snapshot.IpAddresses.Contains(profile.IPv4Address, StringComparer.OrdinalIgnoreCase))
             return false;
+        if (!snapshot.Subnets.Contains(PrefixToMask(profile.PrefixLength!.Value), StringComparer.OrdinalIgnoreCase))
+            return false;
         if (!string.IsNullOrWhiteSpace(profile.Gateway)
             && !snapshot.Gateways.Contains(profile.Gateway, StringComparer.OrdinalIgnoreCase))
+            return false;
+        if (string.IsNullOrWhiteSpace(profile.Gateway) && snapshot.Gateways.Length > 0)
             return false;
         return profile.DnsServers.Count == 0 ||
                profile.DnsServers.All(d => snapshot.DnsServers.Contains(d, StringComparer.OrdinalIgnoreCase));
@@ -143,7 +147,7 @@ public sealed class NetworkConfigurationService
         }), "Statik IPv4 ayarlanamadı");
 
         if (string.IsNullOrWhiteSpace(profile.Gateway))
-            CheckResult(Invoke(adapter, "SetGateways", new object?[] { null, null }), "Ağ geçidi temizlenemedi");
+            CheckResult(Invoke(adapter, "SetGateways", new object?[] { Array.Empty<string>(), Array.Empty<ushort>() }), "Ağ geçidi temizlenemedi");
         else
             CheckResult(Invoke(adapter, "SetGateways", new object?[]
             {
