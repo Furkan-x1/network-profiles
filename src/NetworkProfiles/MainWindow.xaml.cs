@@ -277,7 +277,11 @@ public partial class MainWindow : Window
 
             StatusText.Text = result.Message;
             if (result.Success)
+            {
                 RefreshAdapters();
+                RefreshProfiles();
+                RebuildTrayMenu();
+            }
 
             MessageBox.Show(this, result.Message,
                 result.Success ? "Profil uygulandı" : "Profil uygulanamadı",
