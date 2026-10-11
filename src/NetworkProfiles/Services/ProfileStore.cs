@@ -44,7 +44,7 @@ public sealed class ProfileStore
         ValidateCollection(collection);
 
         var directory = Path.GetDirectoryName(Path.GetFullPath(StorePath))
-            ?? throw new InvalidOperationException("Profil klasörü belirlenemedi.");
+            ?? throw new InvalidOperationException("Could not determine the profile directory.");
         Directory.CreateDirectory(directory);
         var temporaryPath = Path.Combine(directory, $".profiles-{Guid.NewGuid():N}.tmp");
 
@@ -64,9 +64,9 @@ public sealed class ProfileStore
     {
         var info = new FileInfo(path);
         if (!info.Exists)
-            throw new FileNotFoundException("İçe aktarılacak profil dosyası bulunamadı.", path);
+            throw new FileNotFoundException("The profile file to import could not be found.", path);
         if (info.Length > MaxImportBytes)
-            throw new InvalidDataException("Profil dosyası 1 MB sınırını aşıyor.");
+            throw new InvalidDataException("The profile file exceeds the 1 MB limit.");
 
         var imported = DeserializeChecked(File.ReadAllText(path));
         ValidateCollection(imported);
@@ -83,7 +83,7 @@ public sealed class ProfileStore
     private static List<NetworkProfile> DeserializeChecked(string json)
     {
         var profiles = JsonSerializer.Deserialize<List<NetworkProfile>>(json, JsonOptions)
-            ?? throw new InvalidDataException("Profil dosyası boş veya geçersiz JSON içeriyor.");
+            ?? throw new InvalidDataException("The profile file is empty or contains invalid JSON.");
         if (profiles.Count > MaxProfiles)
             throw new InvalidDataException($"En fazla {MaxProfiles} profil içe aktarılabilir.");
         return profiles;
@@ -98,14 +98,14 @@ public sealed class ProfileStore
         foreach (var profile in profiles)
         {
             if (profile is null)
-                throw new InvalidDataException("Profil listesi boş/null kayıt içeremez.");
+                throw new InvalidDataException("The profile list cannot contain null entries.");
 
             var errors = ProfileValidationService.Validate(profile);
             if (errors.Count > 0)
                 throw new InvalidDataException($"'{profile.Name}' profili geçersiz: {string.Join(" ", errors)}");
 
             if (!Guid.TryParseExact(profile.Id, "N", out _) || !ids.Add(profile.Id))
-                throw new InvalidDataException("Profil kimlikleri geçerli ve benzersiz olmalıdır.");
+                throw new InvalidDataException("Profile IDs must be valid and unique.");
         }
     }
 }
