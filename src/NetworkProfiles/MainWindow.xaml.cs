@@ -1,4 +1,6 @@
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Windows.Interop;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Data;
@@ -65,9 +67,31 @@ public partial class MainWindow : Window
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        ApplyDarkWindowFrame();
+
         if (Environment.GetCommandLineArgs().Contains("--minimized", StringComparer.OrdinalIgnoreCase))
             Hide();
     }
+
+    private void ApplyDarkWindowFrame()
+    {
+        // The WPF client area is dark already; set the native Windows 11
+        // non-client frame explicitly so its four outer edges aren't white.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        const int DwmwaBorderColor = 34;
+        const int DwmwaCaptionColor = 35;
+        const int DwmwaTextColor = 36;
+        int darkColor = unchecked((int)0x00181311); // COLORREF for #111318
+        int lightTextColor = unchecked((int)0x00F7F3F1); // COLORREF for #F1F3F7
+
+        _ = DwmSetWindowAttribute(hwnd, DwmwaBorderColor, ref darkColor, sizeof(int));
+        _ = DwmSetWindowAttribute(hwnd, DwmwaCaptionColor, ref darkColor, sizeof(int));
+        _ = DwmSetWindowAttribute(hwnd, DwmwaTextColor, ref lightTextColor, sizeof(int));
+    }
+
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    private static extern int DwmSetWindowAttribute(
+        IntPtr hwnd, int attribute, ref int attributeValue, int attributeSize);
 
     private void Startup_Changed(object sender, RoutedEventArgs e)
     {
