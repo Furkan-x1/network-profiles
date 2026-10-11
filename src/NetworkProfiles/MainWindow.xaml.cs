@@ -144,7 +144,7 @@ public partial class MainWindow : Window
         {
             StartupCheckBox.IsChecked = false;
             StatusText.Text = $"Could not change startup setting: {ex.Message}";
-            MessageBox.Show(this, StatusText.Text, "Başlangıç ayarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, StatusText.Text, "Startup settings", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -162,7 +162,7 @@ public partial class MainWindow : Window
             AdaptersGrid.ItemsSource = _adapters;
             StatusText.Text = $"{_adapters.Count} adaptör bulundu. IPv4 adresi bulunan adaptörler üstte listelenir.";
         }
-        catch (Exception ex) { StatusText.Text = $"Adaptör bilgileri okunamadı: {ex.Message}"; }
+        catch (Exception ex) { StatusText.Text = $"Could not read adapter information: {ex.Message}"; }
     }
 
     private void RefreshProfiles()
@@ -242,8 +242,8 @@ public partial class MainWindow : Window
             key?.SetValue("SkipApplyConfirmation", SkipApplyConfirmationCheckBox.IsChecked == true ? 1 : 0,
                 RegistryValueKind.DWord);
             StatusText.Text = SkipApplyConfirmationCheckBox.IsChecked == true
-                ? "Profil uygulama onayı kapatıldı. Sistem tepsisinden yapılan uygulamalar da doğrudan çalışacak."
-                : "Profil uygulama onayı etkinleştirildi.";
+                ? "Apply confirmation disabled. Profiles applied from the system tray will also run immediately."
+                : "Apply confirmation enabled.";
         }
         catch (Exception ex)
         {
@@ -325,17 +325,17 @@ public partial class MainWindow : Window
         var adapterName = _adapters.FirstOrDefault(a => a.Id == profile.AdapterId)?.Name ?? profile.AdapterId;
         var configuration = profile.UseDhcp
             ? "IPv4 ve DNS otomatik (DHCP)"
-            : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nAğ geçidi: {profile.Gateway ?? "yok"}\nDNS: {(profile.DnsServers.Count == 0 ? "otomatik" : string.Join(", ", profile.DnsServers))}";
+            : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nAğ geçidi: {profile.Gateway ?? "none"}\nDNS: {(profile.DnsServers.Count == 0 ? "automatic" : string.Join(", ", profile.DnsServers))}";
 
         if (SkipApplyConfirmationCheckBox.IsChecked != true &&
             MessageBox.Show(this,
-                $"'{profile.Name}' profili '{adapterName}' adaptörüne uygulanacak.\n\n{configuration}\n\nMevcut ayarlar yalnızca işlem sırasında bellekte tutulur; hata oluşursa geri yükleme denenir. Dosyaya yedek oluşturulmaz. Devam edilsin mi?",
-                "Ağ profilini uygula", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
+                $"Profile '{profile.Name}' will be applied to adapter '{adapterName}'.\n\n{configuration}\n\nCurrent settings are kept in memory during the operation; rollback will be attempted if an error occurs. No backup file is created. Continue?",
+                "Apply network profile", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
             return;
 
         try
         {
-            StatusText.Text = "Windows ağ ayarları değiştiriliyor...";
+            StatusText.Text = "Applying Windows network settings...";
             var result = await Task.Run(() => new NetworkConfigurationService().Apply(profile));
 
             StatusText.Text = result.Message;
@@ -375,7 +375,7 @@ public partial class MainWindow : Window
             if (_profiles.Count + imported.Count > 500)
                 throw new InvalidDataException("A maximum of 500 profiles can be stored.");
             _profiles.AddRange(imported);
-            SaveProfiles($"{imported.Count} profil içe aktarıldı. Ağ ayarları otomatik uygulanmadı.");
+            SaveProfiles($"Imported {imported.Count} profiles. Network settings were not applied automatically.");
         }
         catch (Exception ex)
         {
@@ -389,7 +389,7 @@ public partial class MainWindow : Window
         var dialog = new SaveFileDialog
         {
             Title = "Export profiles",
-            Filter = "JSON dosyaları (*.json)|*.json",
+            Filter = "JSON files (*.json)|*.json",
             FileName = "network-profiles.json",
             DefaultExt = ".json",
             AddExtension = true
@@ -398,11 +398,11 @@ public partial class MainWindow : Window
         try
         {
             _store.ExportTo(dialog.FileName, _profiles);
-            StatusText.Text = $"{_profiles.Count} profil dışa aktarıldı.";
+            StatusText.Text = $"Exported {_profiles.Count} profiles.";
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Could not export profiles: {ex.Message}", "Dışa aktarma hatası",
+            MessageBox.Show(this, $"Could not export profiles: {ex.Message}", "Export error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -437,7 +437,7 @@ public partial class MainWindow : Window
         {
             foreach (var profile in _profiles.OrderBy(p => p.Name, StringComparer.OrdinalIgnoreCase))
             {
-                var adapterName = _adapters.FirstOrDefault(a => a.Id == profile.AdapterId)?.Name ?? "Adaptör bulunamadı";
+                var adapterName = _adapters.FirstOrDefault(a => a.Id == profile.AdapterId)?.Name ?? "Adapter not found";
                 var item = new ToolStripMenuItem($"{profile.Name}  —  {adapterName}");
                 item.ToolTipText = profile.UseDhcp
                     ? "DHCP / otomatik IP ve DNS"
