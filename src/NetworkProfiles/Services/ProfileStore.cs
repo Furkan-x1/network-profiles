@@ -92,7 +92,7 @@ public sealed class ProfileStore
     private static void ValidateCollection(IReadOnlyCollection<NetworkProfile> profiles)
     {
         if (profiles.Count > MaxProfiles)
-            throw new InvalidDataException($"En fazla {MaxProfiles} profil saklanabilir.");
+            throw new InvalidDataException($"A maximum of {MaxProfiles} profiles can be stored.");
 
         var ids = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var profile in profiles)
