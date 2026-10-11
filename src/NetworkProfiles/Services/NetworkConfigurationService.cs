@@ -1,7 +1,6 @@
 using System.Management;
 using System.IO;
 using System.Net;
-using System.Text.Json;
 using NetworkProfiles.Models;
 
 namespace NetworkProfiles.Services;
@@ -19,8 +18,6 @@ public sealed record ApplyResult(bool Success, string Message, string? BackupPat
 /// <summary>Applies one profile to one adapter through Windows' network configuration provider.</summary>
 public sealed class NetworkConfigurationService
 {
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
-
     public AdapterSnapshot ReadSnapshot(string adapterId)
     {
         using var adapter = FindAdapter(adapterId);
@@ -40,13 +37,11 @@ public sealed class NetworkConfigurationService
             return new(false, string.Join(Environment.NewLine, errors));
 
         AdapterSnapshot? snapshot = null;
-        string? backupPath = null;
         var stage = "adaptörün mevcut ayarlarını okuma";
         try
         {
             snapshot = ReadSnapshot(profile.AdapterId);
-            stage = "mevcut ayarların yedeğini kaydetme";
-            backupPath = SaveBackup(snapshot, profile);
+            // Keep the previous settings in memory for rollback if applying or verification fails.
             stage = "profil ayarlarını Windows'a uygulama";
             ApplyCore(profile);
             stage = "uygulanan ayarları yeniden okuma";
@@ -55,7 +50,7 @@ public sealed class NetworkConfigurationService
             if (!Matches(profile, actual))
                 throw new InvalidOperationException("Windows tarafından okunan ayarlar profille eşleşmiyor.");
 
-            return new(true, "Profil başarıyla uygulandı ve Windows ayarları doğrulandı.", backupPath);
+            return new(true, "Profil başarıyla uygulandı ve Windows ayarları doğrulandı.");
         }
         catch (Exception ex)
         {
@@ -66,14 +61,14 @@ public sealed class NetworkConfigurationService
                 {
                     stage = "hata sonrası önceki ayarları geri yükleme";
                     Restore(snapshot);
-                    return new(false, $"Profil uygulanamadı. Önceki ayarlar geri yüklendi. Hata aşaması: {detail}", backupPath);
+                    return new(false, $"Profil uygulanamadı. Önceki ayarlar bellekten geri yüklendi. Hata aşaması: {detail}");
                 }
                 catch (Exception rollbackEx)
                 {
-                    return new(false, $"KRİTİK: Profil uygulanamadı ve otomatik geri yükleme de başarısız oldu. Yedek: {backupPath ?? "oluşturulamadı"}. Hata: {detail}. Geri yükleme hatası: {rollbackEx.GetType().Name}: {rollbackEx.Message}", backupPath);
+                    return new(false, $"KRİTİK: Profil uygulanamadı ve otomatik geri yükleme de başarısız oldu. Hata: {detail}. Geri yükleme hatası: {rollbackEx.GetType().Name}: {rollbackEx.Message}");
                 }
             }
-            return new(false, $"Ağ ayarları değiştirilmedi veya yedek alınamadı. Hata aşaması: {detail}", backupPath);
+            return new(false, $"Ağ ayarları değiştirilmedi. Hata aşaması: {detail}");
         }
     }
 
@@ -276,13 +271,4 @@ public sealed class NetworkConfigurationService
         });
     }
 
-    private static string SaveBackup(AdapterSnapshot snapshot, NetworkProfile profile)
-    {
-        var folder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "NetworkProfiles", "backups");
-        Directory.CreateDirectory(folder);
-        var path = Path.Combine(folder, $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.json");
-        File.WriteAllText(path, JsonSerializer.Serialize(new { Profile = profile.Name, Snapshot = snapshot }, JsonOptions));
-        return path;
-    }
 }
