@@ -55,16 +55,16 @@ public sealed class NetworkConfigurationService
             return new(false, string.Join(Environment.NewLine, errors));
 
         AdapterSnapshot? snapshot = null;
-        var stage = "adaptörün mevcut ayarlarını okuma";
+        var stage = "reading the adapter’s current settings";
         try
         {
             snapshot = ReadSnapshot(profile.AdapterId);
             // Keep the previous settings in memory for rollback if applying or verification fails.
-            stage = "profil ayarlarını Windows'a uygulama";
+            stage = "applying profile settings to Windows";
             ApplyCore(profile);
-            stage = "uygulanan ayarları yeniden okuma";
+            stage = "reading back the applied settings";
             var actual = ReadSnapshot(profile.AdapterId);
-            stage = "uygulama sonucunu doğrulama";
+            stage = "verifying the apply result";
             if (!Matches(profile, actual))
                 throw new InvalidOperationException("The settings read back from Windows do not match the profile.");
 
@@ -77,7 +77,7 @@ public sealed class NetworkConfigurationService
             {
                 try
                 {
-                    stage = "hata sonrası önceki ayarları geri yükleme";
+                    stage = "restoring previous settings after an error";
                     Restore(snapshot);
                     return new(false, $"Profile could not be applied. Previous settings were restored from memory. Failure stage: {detail}");
                 }
@@ -101,7 +101,7 @@ public sealed class NetworkConfigurationService
         }
 
         if (snapshot.IpAddresses.Length == 0 || snapshot.Subnets.Length == 0)
-            throw new InvalidOperationException("Yedekte statik IPv4 adresi bulunamadığından geri yükleme yapılamıyor.");
+            throw new InvalidOperationException("Cannot restore settings because the snapshot contains no static IPv4 address.");
 
         CheckResult(Invoke(adapter, "EnableStatic", new object[] { snapshot.IpAddresses, snapshot.Subnets }), "Could not restore previous static IPv4 settings");
         CheckResult(Invoke(adapter, "SetGateways", snapshot.Gateways.Length == 0
@@ -238,7 +238,7 @@ public sealed class NetworkConfigurationService
         }
 
         throw new InvalidOperationException(
-            $"Adaptörün Windows ağ yapılandırması bulunamadı (NetworkInterface.Id={wanted}). " +
+            $"Could not find the Windows network configuration for adapter (NetworkInterface.Id={wanted}). " +
             "No matching adapter or IPv4 configuration was found in Windows WMI.");
     }
 
