@@ -31,8 +31,11 @@ public partial class MainWindow : Window
     private ICollectionView? _profileView;
     private bool _allowExit;
 
-    public MainWindow()
+    private readonly bool _startMinimized;
+
+    public MainWindow(bool startMinimized = false)
     {
+        _startMinimized = startMinimized;
         InitializeComponent();
         _trayIcon = new NotifyIcon
         {
@@ -70,7 +73,7 @@ public partial class MainWindow : Window
     {
         ApplyDarkWindowFrame();
 
-        if (Environment.GetCommandLineArgs().Contains("--minimized", StringComparer.OrdinalIgnoreCase))
+        if (_startMinimized)
             Hide();
     }
 
@@ -462,6 +465,7 @@ public partial class MainWindow : Window
 
     private void ShowWindow()
     {
+        ShowInTaskbar = true;
         Show();
         if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
         Activate();
