@@ -13,18 +13,11 @@ public partial class App : System.Windows.Application
         var window = new MainWindow(startMinimized);
         MainWindow = window;
 
-        if (startMinimized)
-        {
-            // Keep the startup instance out of the taskbar and hide it before
-            // the first normal interaction; the tray icon remains available.
-            window.ShowInTaskbar = false;
-            window.WindowState = WindowState.Minimized;
+        // Do not show the WPF window at all for a tray launch. Showing then
+        // hiding it causes a black window flash and may briefly add it to the taskbar.
+        // The NotifyIcon is initialized by MainWindow's constructor, and explicit
+        // shutdown mode keeps the process alive until the user chooses Exit.
+        if (!startMinimized)
             window.Show();
-            window.Hide();
-        }
-        else
-        {
-            window.Show();
-        }
     }
 }
