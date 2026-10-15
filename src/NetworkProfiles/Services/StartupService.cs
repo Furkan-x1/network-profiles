@@ -42,7 +42,7 @@ public sealed class StartupService
 
         // /RL HIGHEST lets Task Scheduler launch this requireAdministrator app
         // at logon without relying on an interactive UAC prompt.
-        var taskCommand = $"\\"{executable}\\" --minimized";
+        var taskCommand = $"\"{executable}\" --minimized";
         var create = RunSchtasks(
             "/Create",
             "/TN", TaskName,
