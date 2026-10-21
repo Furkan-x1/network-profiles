@@ -9,9 +9,11 @@ public partial class App : System.Windows.Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        _instanceMutex = new Mutex(true, @"Local\\NetworkProfiles.Singleton", out bool createdNew);
+        _instanceMutex = new Mutex(true, @"Local\NetworkProfiles.Singleton", out bool createdNew);
         if (!createdNew)
         {
+            _instanceMutex.Dispose();
+            _instanceMutex = null;
             Shutdown();
             return;
         }
@@ -25,8 +27,8 @@ public partial class App : System.Windows.Application
 
         if (startMinimized)
         {
-            // Create the WPF handle and fire Loaded so tray-only startup works,
-            // but keep the window invisible and off the taskbar during startup.
+            // Show invisibly so WPF raises Loaded and initializes tray-related UI,
+            // without flashing a black window or adding it to the taskbar.
             window.ShowInTaskbar = false;
             window.WindowState = WindowState.Minimized;
             window.Opacity = 0;
