@@ -49,6 +49,7 @@ public sealed class StartupService
             "/TR", taskCommand,
             "/SC", "ONLOGON",
             "/RL", "HIGHEST",
+            "/IT",
             "/F");
 
         if (create.ExitCode != 0)
