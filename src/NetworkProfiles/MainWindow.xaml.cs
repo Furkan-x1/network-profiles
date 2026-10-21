@@ -465,10 +465,23 @@ public partial class MainWindow : Window
 
     private void ShowWindow()
     {
+        // Tray-only startup creates the window with Opacity=0. Restore it before
+        // showing/activating it; otherwise the window can remain invisible or render
+        // incorrectly when opened from the notification area.
         ShowInTaskbar = true;
-        Show();
-        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Opacity = 1;
+
+        if (!IsVisible)
+            Show();
+
+        if (WindowState == WindowState.Minimized)
+            WindowState = WindowState.Normal;
+
+        ApplyDarkWindowFrame();
+        InvalidateVisual();
+        UpdateLayout();
         Activate();
+        Focus();
     }
 
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
