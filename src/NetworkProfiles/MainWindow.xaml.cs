@@ -25,6 +25,7 @@ public partial class MainWindow : Window
     private readonly ProfileStore _store = new();
     private readonly StartupService _startup = new();
     private readonly NotifyIcon _trayIcon;
+    private bool _traySuccessFeedbackRunning;
     private List<AdapterStatus> _adapters = [];
     private List<NetworkProfile> _profiles = [];
     private List<ProfileRow> _profileRows = [];
@@ -323,14 +324,14 @@ public partial class MainWindow : Window
         await ApplyProfileAsync(row.Profile);
     }
 
-    private async Task ApplyProfileAsync(NetworkProfile profile)
+    private async Task ApplyProfileAsync(NetworkProfile profile, bool fromTray = false, bool skipConfirmation = false)
     {
         var adapterName = _adapters.FirstOrDefault(a => a.Id == profile.AdapterId)?.Name ?? profile.AdapterId;
         var configuration = profile.UseDhcp
             ? "IPv4 and DNS automatic (DHCP)"
             : $"IPv4: {profile.IPv4Address}/{profile.PrefixLength}\nGateway: {profile.Gateway ?? "none"}\nDNS: {(profile.DnsServers.Count == 0 ? "automatic" : string.Join(", ", profile.DnsServers))}";
 
-        if (SkipApplyConfirmationCheckBox.IsChecked != true &&
+        if (!skipConfirmation && SkipApplyConfirmationCheckBox.IsChecked != true &&
             MessageBox.Show(this,
                 $"Profile '{profile.Name}' will be applied to adapter '{adapterName}'.\n\n{configuration}\n\nCurrent settings are kept in memory during the operation; rollback will be attempted if an error occurs. No backup file is created. Continue?",
                 "Apply network profile", MessageBoxButton.YesNo, MessageBoxImage.Warning) != MessageBoxResult.Yes)
@@ -349,9 +350,19 @@ public partial class MainWindow : Window
                 RebuildTrayMenu();
             }
 
-            MessageBox.Show(this, result.Message,
-                result.Success ? "Profile applied" : "Could not apply profile",
-                MessageBoxButton.OK, result.Success ? MessageBoxImage.Information : MessageBoxImage.Warning);
+            if (result.Success)
+            {
+                if (fromTray)
+                    _ = ShowTraySuccessFeedbackAsync();
+                else
+                    MessageBox.Show(this, result.Message, "Profile applied",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                MessageBox.Show(this, result.Message, "Could not apply profile",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
         }
         catch (Exception ex)
         {
@@ -445,11 +456,12 @@ public partial class MainWindow : Window
                 item.ToolTipText = profile.UseDhcp
                     ? "DHCP / automatic IP and DNS"
                     : $"{profile.IPv4Address}/{profile.PrefixLength}";
-                item.Click += async (_, _) => await ApplyProfileAsync(profile);
+                item.Click += async (_, _) => await ApplyProfileAsync(profile, fromTray: true);
                 profilesMenu.DropDownItems.Add(item);
             }
         }
         menu.Items.Add(profilesMenu);
+        menu.Items.Add("Quick IP...", null, (_, _) => OpenQuickIp());
         menu.Items.Add(new ToolStripSeparator());
         menu.Items.Add("Refresh", null, (_, _) =>
         {
@@ -461,6 +473,36 @@ public partial class MainWindow : Window
         var oldMenu = _trayIcon.ContextMenuStrip;
         _trayIcon.ContextMenuStrip = menu;
         oldMenu?.Dispose();
+    }
+
+    private async void OpenQuickIp()
+    {
+        var dialog = new QuickIpWindow(_adapters)
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true && dialog.Profile is not null)
+            await ApplyProfileAsync(dialog.Profile, fromTray: true, skipConfirmation: true);
+    }
+
+    private async Task ShowTraySuccessFeedbackAsync()
+    {
+        if (_traySuccessFeedbackRunning || _allowExit)
+            return;
+
+        _traySuccessFeedbackRunning = true;
+        try
+        {
+            _trayIcon.Icon = System.Drawing.SystemIcons.Information;
+            await Task.Delay(1400);
+            if (!_allowExit)
+                _trayIcon.Icon = System.Drawing.SystemIcons.Application;
+        }
+        finally
+        {
+            _traySuccessFeedbackRunning = false;
+        }
     }
 
     private void ShowWindow()
