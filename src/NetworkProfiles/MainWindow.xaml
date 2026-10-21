@@ -56,6 +56,9 @@
     <Border Grid.Row="0" Background="{StaticResource WindowBrush}" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
       <DockPanel LastChildFill="True">
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+          <Button Style="{StaticResource TitleBarButtonStyle}" Width="72" FontFamily="Segoe UI" FontSize="12"
+                  Content="GitHub" ToolTip="Open Network Profiles repository on GitHub"
+                  Click="OpenGitHub_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
           <Button Style="{StaticResource TitleBarButtonStyle}" Content="&#xE921;" ToolTip="Minimize" Click="MinimizeWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
           <Button x:Name="MaximizeRestoreButton" Style="{StaticResource TitleBarButtonStyle}" Content="&#xE922;" ToolTip="Maximize / restore" Click="MaximizeRestoreWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
           <Button Style="{StaticResource CloseTitleBarButtonStyle}" Content="&#xE8BB;" ToolTip="Close" Click="CloseWindow_Click" shell:WindowChrome.IsHitTestVisibleInChrome="True"/>
