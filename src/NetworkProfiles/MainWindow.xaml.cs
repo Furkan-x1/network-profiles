@@ -505,6 +505,23 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OpenGitHub_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://github.com/Furkan-x1/network-profiles",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, $"Could not open GitHub: {ex.Message}", "Open GitHub",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     private void ShowWindow()
     {
         // Tray-only startup creates the window with Opacity=0. Restore it before
